@@ -257,7 +257,7 @@ const AIAnalyticsDashboard: React.FC<AIAnalyticsDashboardProps> = ({ projectId }
           {Object.keys(analytics.categoryCounts).length > 0 ? (
             <div className="space-y-3">
               {Object.entries(analytics.categoryCounts)
-                .sort(([,a], [,b]) => b - a)
+                .sort(([,a], [,b]) => (b as number) - (a as number))
                 .map(([category, count]) => (
                   <div key={category} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -271,7 +271,7 @@ const AIAnalyticsDashboard: React.FC<AIAnalyticsDashboardProps> = ({ projectId }
                       <div className="w-16 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-indigo-600 h-2 rounded-full" 
-                          style={{ width: `${(count / analytics.totalTests) * 100}%` }}
+                          style={{ width: `${((count as number) / analytics.totalTests) * 100}%` }}
                         ></div>
                       </div>
                     </div>
