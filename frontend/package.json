@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "cd ../shared && npm run build && cd ../frontend && tsc && ../node_modules/.bin/vite build",
+    "prebuild": "cd ../shared && npm run build",
+    "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
