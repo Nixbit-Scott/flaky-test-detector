@@ -84,3 +84,22 @@ public/
 
 # Docker volumes
 docker-data/
+
+# Documentation and development files (not needed for deployment)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.md
+!README.md
+!CLAUDE.md
+*.yaml
+*.yml
+!docker-compose.yml
+!docker-compose.prod.yml
+*.txt
+docs/
+scripts/
+.claude/
+Dockerfile.old
+Dockerfile.prod.old
