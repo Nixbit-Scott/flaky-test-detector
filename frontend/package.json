@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "cd ../shared && npm run build && cd ../frontend && tsc && vite build",
+    "build": "cd ../shared && npm run build && cd ../frontend && tsc && npx vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
