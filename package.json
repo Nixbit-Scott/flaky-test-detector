@@ -1,0 +1,51 @@
+{
+  "name": "nixbit",
+  "version": "0.1.0",
+  "description": "Nixbit - AI-powered test reliability platform that eliminates flaky tests",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "admin-frontend",
+    "marketing",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:admin": "cd admin-frontend && npm run dev",
+    "dev:marketing": "cd marketing && npm run dev",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:admin\" \"npm run dev:marketing\"",
+    "build": "npm run build:shared && npm run build:backend && npm run build:frontend && npm run build:admin && npm run build:marketing",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "npm run build:shared && cd frontend && npm run build",
+    "build:admin": "cd admin-frontend && npm run build",
+    "build:marketing": "cd marketing && npm run build",
+    "build:shared": "cd shared && npm run build",
+    "test": "npm run test:backend && npm run test:frontend && npm run test:marketing",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "test:marketing": "cd marketing && npm test",
+    "lint": "npm run lint:backend && npm run lint:frontend && npm run lint:admin && npm run lint:marketing",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:admin": "cd admin-frontend && npm run lint",
+    "lint:marketing": "cd marketing && npm run lint",
+    "typecheck": "npm run typecheck:backend && npm run typecheck:frontend && npm run typecheck:admin && npm run typecheck:marketing",
+    "typecheck:backend": "cd backend && npm run typecheck",
+    "typecheck:frontend": "cd frontend && npm run typecheck",
+    "typecheck:admin": "cd admin-frontend && npm run typecheck",
+    "typecheck:marketing": "cd marketing && npm run typecheck",
+    "setup": "npm install && npm run build:shared"
+  },
+  "devDependencies": {
+    "@vercel/node": "^3.2.29",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

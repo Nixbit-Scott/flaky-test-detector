@@ -1,0 +1,111 @@
+Here's a complete step-by-step guide to set up the Flaky Test Detector project environment:
+
+  Prerequisites Setup
+
+  1. Install Node.js and npm
+
+  First, check if you have Node.js installed:
+  node --version
+  npm --version
+
+  If not installed, download from https://nodejs.org/ (choose LTS version 18 or higher).
+
+  2. Install PostgreSQL Database
+
+  Ubuntu/Debian:
+  sudo apt update
+  sudo apt install postgresql postgresql-contrib
+  sudo systemctl start postgresql
+  sudo systemctl enable postgresql
+
+  macOS:
+  brew install postgresql
+  brew services start postgresql
+
+  Windows: Download from https://www.postgresql.org/download/windows/
+
+  3. Install Redis
+
+  Ubuntu/Debian:
+  sudo apt install redis-server
+  sudo systemctl start redis-server
+  sudo systemctl enable redis-server
+
+  macOS:
+  brew install redis
+  brew services start redis
+
+  Windows: Download from https://redis.io/download
+
+  Project Setup
+
+  4. Navigate to Project Directory
+
+  cd /home/scott/Documents/MyProjects/ProjectSaaS/flaky-test-detector
+
+  5. Install Dependencies
+
+  Run the setup command that installs all packages and builds shared components:
+  npm run setup
+
+  This command will:
+  - Install root dependencies
+  - Install backend dependencies
+  - Install frontend dependencies
+  - Install shared package dependencies
+  - Build the shared package
+
+  6. Set Up Environment Variables
+
+  Copy the example environment file:
+  cp .env.example .env
+
+  Edit the .env file with your database credentials:
+  nano .env
+
+  Update these key settings:
+  # Replace with your actual PostgreSQL credentials
+  DATABASE_URL="postgresql://your_username:your_password@localhost:5432/flaky_test_detector"
+
+  # Generate a secure JWT secret (random string)
+  JWT_SECRET="your-super-secret-jwt-key-change-this-to-something-random"
+
+  # Other settings can remain as defaults for development
+
+  7. Set Up Database
+
+  Create the database:
+  sudo -u postgres createdb flaky_test_detector
+
+  Navigate to backend and set up schema:
+  cd backend
+  npx prisma migrate dev
+  npx prisma generate
+
+  Starting the Application
+
+  8. Start Development Servers
+
+  From the root directory:
+  npm run dev
+
+  This starts:
+  - Backend API server on http://localhost:3001
+  - Frontend dashboard on http://localhost:5173
+
+  Verification Steps
+
+  Test your setup:
+
+  1. Check backend: Visit http://localhost:3001/api/health
+  2. Check frontend: Visit http://localhost:5173
+  3. Check database: Run npx prisma studio from backend directory to open database browser
+
+  Common Issues & Solutions
+
+  - Database connection errors: Verify PostgreSQL is running and credentials are correct
+  - Port conflicts: Change PORT in .env if 3001 is occupied
+  - Permission errors: Use sudo for system package installations
+  - Node version: Ensure Node.js 18+ is installed
+
+  Your development environment should now be ready for the Flaky Test Detector project!

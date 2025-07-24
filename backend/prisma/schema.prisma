@@ -1,0 +1,640 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String               @id @default(cuid())
+  email         String               @unique
+  name          String?
+  password      String
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  isSystemAdmin Boolean              @default(false)
+  lastLoginAt   DateTime?
+  auditLogs     AdminAuditLog[]
+  adminSessions AdminSession[]
+  apiKeys       ApiKey[]
+  organizations OrganizationMember[]
+  projects      Project[]
+  teams         TeamMember[]
+
+  @@map("users")
+}
+
+model Organization {
+  id                   String               @id @default(cuid())
+  name                 String
+  domain               String?
+  plan                 String               @default("starter")
+  billingEmail         String
+  maxProjects          Int                  @default(5)
+  maxMembers           Int                  @default(3)
+  isActive             Boolean              @default(true)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  subscriptionStatus   String               @default("active")
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  trialEndsAt          DateTime?
+  invitations          Invitation[]
+  members              OrganizationMember[]
+  teams                Team[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           String       @default("member")
+  joinedAt       DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("organization_members")
+}
+
+model Team {
+  id             String       @id @default(cuid())
+  name           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  projects       Project[]
+  members        TeamMember[]
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id     String @id @default(cuid())
+  userId String
+  teamId String
+  role   String @default("member")
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@map("team_members")
+}
+
+model Invitation {
+  id             String       @id @default(cuid())
+  email          String
+  organizationId String
+  teamId         String?
+  role           String       @default("member")
+  token          String       @unique
+  status         String       @default("pending")
+  invitedBy      String
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  acceptedAt     DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("invitations")
+}
+
+model Project {
+  id                   String               @id @default(cuid())
+  name                 String
+  repository           String
+  branch               String               @default("main")
+  userId               String
+  teamId               String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  githubInstallationId String?
+  gitlabProjectId      String?
+  jenkinsJobUrl        String?
+  retryEnabled         Boolean              @default(true)
+  maxRetries           Int                  @default(3)
+  retryDelay           Int                  @default(30)
+  flakyThreshold       Float                @default(0.3)
+  teamConfiguration    Json?
+  flakyTests           FlakyTestPattern[]
+  impactCalculations   ImpactCalculation[]
+  integrations         Integration[]
+  predictiveAnalyses   PredictiveAnalysis[]
+  team                 Team?                @relation(fields: [teamId], references: [id])
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quarantineImpacts    QuarantineImpact[]
+  quarantinePolicies   QuarantinePolicy[]
+  stabilityReports     StabilityReport[]
+  testRuns             TestRun[]
+
+  @@map("projects")
+}
+
+model TestRun {
+  id           String       @id @default(cuid())
+  projectId    String
+  branch       String
+  commit       String
+  buildId      String?
+  buildUrl     String?
+  startedAt    DateTime
+  completedAt  DateTime?
+  status       String
+  totalTests   Int          @default(0)
+  passedTests  Int          @default(0)
+  failedTests  Int          @default(0)
+  skippedTests Int          @default(0)
+  testResults  TestResult[]
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("test_runs")
+}
+
+model TestResult {
+  id                   String                @id @default(cuid())
+  testRunId            String
+  testName             String
+  testSuite            String?
+  status               String
+  duration             Int?
+  errorMessage         String?
+  stackTrace           String?
+  retryAttempt         Int                   @default(0)
+  createdAt            DateTime              @default(now())
+  projectId            String
+  timestamp            DateTime              @default(now())
+  environmentalContext EnvironmentalContext?
+  rootCauseAnalyses    RootCauseAnalysis[]
+  testRun              TestRun               @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+
+  @@map("test_results")
+}
+
+model FlakyTestPattern {
+  id                String              @id @default(cuid())
+  projectId         String
+  testName          String
+  testSuite         String?
+  failureRate       Float
+  totalRuns         Int                 @default(0)
+  failedRuns        Int                 @default(0)
+  confidence        Float               @default(0.0)
+  lastSeen          DateTime            @default(now())
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  isQuarantined     Boolean             @default(false)
+  quarantineReason  String?
+  quarantinedAt     DateTime?
+  quarantinedBy     String?
+  project           Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quarantineHistory QuarantineHistory[]
+  quarantineImpacts QuarantineImpact[]
+  rootCauseAnalyses RootCauseAnalysis[]
+
+  @@unique([projectId, testName, testSuite])
+  @@map("flaky_test_patterns")
+}
+
+model RootCauseAnalysis {
+  id                  String           @id @default(cuid())
+  flakyTestPatternId  String
+  testResultId        String?
+  primaryCategory     String
+  secondaryCategories String[]
+  confidence          Float
+  errorPattern        String?
+  stackTraceSignature String?
+  timingIssues        String[]
+  environmentFactors  String[]
+  recommendations     Json
+  estimatedFixEffort  String?
+  similarIssuesCount  Int              @default(0)
+  modelVersion        String           @default("v1.0")
+  processingTime      Int?
+  dataQuality         Float            @default(1.0)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  flakyTestPattern    FlakyTestPattern @relation(fields: [flakyTestPatternId], references: [id], onDelete: Cascade)
+  testResult          TestResult?      @relation(fields: [testResultId], references: [id])
+
+  @@map("root_cause_analyses")
+}
+
+model EnvironmentalContext {
+  id               String     @id @default(cuid())
+  testResultId     String     @unique
+  ciRunner         String?
+  ciRegion         String?
+  nodeVersion      String?
+  dependencies     Json?
+  executionTime    DateTime
+  timeOfDay        String?
+  dayOfWeek        String?
+  concurrentJobs   Int?
+  cpuUsage         Float?
+  memoryUsage      Float?
+  diskSpace        Float?
+  networkLatency   Int?
+  externalServices Json?
+  databaseLoad     Float?
+  createdAt        DateTime   @default(now())
+  testResult       TestResult @relation(fields: [testResultId], references: [id], onDelete: Cascade)
+
+  @@map("environmental_contexts")
+}
+
+model QuarantineHistory {
+  id                  String           @id @default(cuid())
+  flakyTestPatternId  String
+  action              String
+  reason              String?
+  triggeredBy         String?
+  metadata            Json?
+  failureRate         Float?
+  confidence          Float?
+  consecutiveFailures Int?
+  impactScore         Float?
+  createdAt           DateTime         @default(now())
+  flakyTestPattern    FlakyTestPattern @relation(fields: [flakyTestPatternId], references: [id], onDelete: Cascade)
+
+  @@map("quarantine_history")
+}
+
+model QuarantinePolicy {
+  id                   String   @id @default(cuid())
+  projectId            String
+  name                 String
+  description          String?
+  isActive             Boolean  @default(true)
+  failureRateThreshold Float    @default(0.5)
+  confidenceThreshold  Float    @default(0.7)
+  consecutiveFailures  Int      @default(3)
+  minRunsRequired      Int      @default(5)
+  stabilityPeriod      Int      @default(7)
+  successRateRequired  Float    @default(0.95)
+  minSuccessfulRuns    Int      @default(10)
+  highImpactSuites     String[]
+  priorityTests        String[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("quarantine_policies")
+}
+
+model QuarantineImpact {
+  id                 String           @id @default(cuid())
+  projectId          String
+  flakyTestPatternId String
+  buildsBlocked      Int              @default(0)
+  ciTimeWasted       Int              @default(0)
+  developerHours     Float            @default(0)
+  falsePositives     Int              @default(0)
+  quarantinePeriod   Int              @default(0)
+  autoUnquarantined  Boolean          @default(false)
+  manualIntervention Boolean          @default(false)
+  periodStart        DateTime
+  periodEnd          DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  flakyTestPattern   FlakyTestPattern @relation(fields: [flakyTestPatternId], references: [id], onDelete: Cascade)
+  project            Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, flakyTestPatternId])
+  @@map("quarantine_impacts")
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  name      String
+  key       String    @unique
+  userId    String
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model PredictiveAnalysis {
+  id                    String               @id @default(cuid())
+  projectId             String
+  testFilePath          String
+  testName              String?
+  riskScore             Float
+  riskLevel             String
+  confidence            Float
+  staticFeatures        Json
+  metadataFeatures      Json
+  predictedFailureTypes String[]
+  estimatedTimeToFlaky  Int?
+  modelVersion          String               @default("v1.0")
+  analysisDate          DateTime             @default(now())
+  lastUpdated           DateTime             @updatedAt
+  feedbacks             PredictionFeedback[]
+  project               Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  staticCodeFeatures    StaticCodeFeatures?
+
+  @@unique([projectId, testFilePath, testName])
+  @@map("predictive_analyses")
+}
+
+model StaticCodeFeatures {
+  id                      String             @id @default(cuid())
+  predictiveAnalysisId    String             @unique
+  cyclomaticComplexity    Int                @default(0)
+  cognitiveComplexity     Int                @default(0)
+  nestingDepth            Int                @default(0)
+  linesOfCode             Int                @default(0)
+  asyncAwaitCount         Int                @default(0)
+  promiseChainCount       Int                @default(0)
+  timeoutCount            Int                @default(0)
+  setIntervalCount        Int                @default(0)
+  httpCallCount           Int                @default(0)
+  fileSystemCount         Int                @default(0)
+  databaseQueryCount      Int                @default(0)
+  externalServiceCount    Int                @default(0)
+  setupTeardownComplexity Int                @default(0)
+  sharedStateUsage        Int                @default(0)
+  testIsolationScore      Float              @default(1.0)
+  hardcodedDelays         Int                @default(0)
+  raceConditionPatterns   Int                @default(0)
+  timingSensitivity       Float              @default(0.0)
+  resourceLeakRisk        Float              @default(0.0)
+  extractedAt             DateTime           @default(now())
+  predictiveAnalysis      PredictiveAnalysis @relation(fields: [predictiveAnalysisId], references: [id], onDelete: Cascade)
+
+  @@map("static_code_features")
+}
+
+model PredictionFeedback {
+  id                   String             @id @default(cuid())
+  predictiveAnalysisId String
+  userId               String?
+  actualOutcome        String
+  feedbackType         String
+  timeToOutcome        Int?
+  userRating           Int?
+  comments             String?
+  wasHelpful           Boolean?
+  actionTaken          String?
+  createdAt            DateTime           @default(now())
+  predictiveAnalysis   PredictiveAnalysis @relation(fields: [predictiveAnalysisId], references: [id], onDelete: Cascade)
+
+  @@map("prediction_feedback")
+}
+
+model MLModelMetrics {
+  id              String   @id @default(cuid())
+  modelVersion    String
+  precision       Float
+  recall          Float
+  f1Score         Float
+  accuracy        Float
+  auc             Float
+  trainingSize    Int
+  validationSize  Int
+  testSize        Int
+  topFeatures     Json
+  algorithm       String
+  hyperparameters Json
+  trainedAt       DateTime @default(now())
+  isActive        Boolean  @default(false)
+
+  @@map("ml_model_metrics")
+}
+
+model ImpactCalculation {
+  id                   String   @id @default(cuid())
+  projectId            String
+  calculationDate      DateTime @default(now())
+  totalTimeWasted      Float
+  estimatedCostImpact  Float
+  deploymentsDelayed   Int      @default(0)
+  mergeRequestsBlocked Int      @default(0)
+  velocityReduction    Float    @default(0.0)
+  impactData           Json
+  testImpacts          Json
+  recommendations      String[]
+  teamConfiguration    Json?
+  calculationVersion   String   @default("v1.0")
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("impact_calculations")
+}
+
+model StabilityReport {
+  id               String   @id @default(cuid())
+  projectId        String
+  generatedAt      DateTime @default(now())
+  overallStability Float
+  totalTests       Int      @default(0)
+  stableTests      Int      @default(0)
+  unstableTests    Int      @default(0)
+  criticalTests    Int      @default(0)
+  reportData       Json
+  insights         String[]
+  recommendations  String[]
+  reportVersion    String   @default("v1.0")
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("stability_reports")
+}
+
+model CrossRepoPatternAnalysis {
+  id               String   @id @default(cuid())
+  organizationId   String
+  analysisDate     DateTime @default(now())
+  detectedPatterns Json
+  patternCount     Int      @default(0)
+  analysisVersion  String   @default("v1.0")
+  timeWindowDays   Int      @default(30)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("cross_repo_pattern_analyses")
+}
+
+model Integration {
+  id         String    @id @default(cuid())
+  projectId  String
+  name       String
+  type       String
+  enabled    Boolean   @default(true)
+  config     Json
+  alertTypes String[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  lastUsed   DateTime?
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("integrations")
+}
+
+model AdminSession {
+  id             String   @id @default(cuid())
+  userId         String
+  sessionToken   String   @unique
+  ipAddress      String?
+  userAgent      String?
+  isActive       Boolean  @default(true)
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  lastAccessedAt DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_sessions")
+}
+
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  action       String
+  resourceType String
+  resourceId   String?
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+  beforeState  Json?
+  afterState   Json?
+  severity     String   @default("info")
+  category     String
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([category])
+  @@index([createdAt])
+  @@map("admin_audit_logs")
+}
+
+model SystemMetric {
+  id           String   @id @default(cuid())
+  metricName   String
+  metricType   String
+  value        Float
+  unit         String?
+  labels       Json?
+  source       String?
+  timestamp    DateTime @default(now())
+  intervalType String   @default("point")
+
+  @@index([metricName])
+  @@index([timestamp])
+  @@index([metricType])
+  @@map("system_metrics")
+}
+
+model SystemHealth {
+  id              String    @id @default(cuid())
+  serviceName     String
+  status          String
+  responseTime    Int?
+  errorRate       Float?
+  lastError       String?
+  metadata        Json?
+  checkedAt       DateTime  @default(now())
+  lastHealthyAt   DateTime?
+  lastUnhealthyAt DateTime?
+
+  @@index([serviceName])
+  @@index([status])
+  @@index([checkedAt])
+  @@map("system_health")
+}
+
+model SupportTicket {
+  id               String    @id @default(cuid())
+  ticketNumber     String    @unique
+  title            String
+  description      String
+  priority         String    @default("medium")
+  status           String    @default("open")
+  category         String
+  customerEmail    String
+  organizationId   String?
+  userId           String?
+  assignedToUserId String?
+  source           String    @default("manual")
+  tags             String[]
+  resolution       String?
+  resolvedAt       DateTime?
+  firstResponseAt  DateTime?
+  firstResponseSla Int?
+  resolutionSla    Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([priority])
+  @@index([customerEmail])
+  @@index([organizationId])
+  @@index([category])
+  @@index([createdAt])
+  @@map("support_tickets")
+}
+
+model AdminNotification {
+  id                  String    @id @default(cuid())
+  title               String
+  message             String
+  type                String
+  severity            String    @default("info")
+  targetAdminIds      String[]
+  isGlobal            Boolean   @default(false)
+  isRead              Boolean   @default(false)
+  isArchived          Boolean   @default(false)
+  relatedResourceType String?
+  relatedResourceId   String?
+  actionUrl           String?
+  metadata            Json?
+  createdAt           DateTime  @default(now())
+  readAt              DateTime?
+  archivedAt          DateTime?
+
+  @@index([type])
+  @@index([severity])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("admin_notifications")
+}
+
+model MarketingSignup {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String?
+  company            String?
+  teamSize           String?
+  currentPainPoints  String[]
+  interestedFeatures String[]
+  source             String?
+  utmParameters      Json?
+  ipAddress          String?
+  userAgent          String?
+  isConverted        Boolean   @default(false)
+  convertedAt        DateTime?
+  convertedUserId    String?
+  emailSubscribed    Boolean   @default(true)
+  unsubscribedAt     DateTime?
+  leadScore          Int?
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([email])
+  @@index([isConverted])
+  @@index([source])
+  @@index([createdAt])
+  @@map("marketing_signups")
+}
