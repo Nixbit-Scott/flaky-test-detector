@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:frontend",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "npm install",
   "functions": {
     "api/**/*.ts": {
       "runtime": "@vercel/node"
