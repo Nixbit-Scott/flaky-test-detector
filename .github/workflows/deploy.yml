@@ -27,6 +27,12 @@ jobs:
     - name: Build frontend
       run: npm run build:frontend
       
+    - name: Debug secrets
+      run: |
+        echo "VERCEL_TOKEN exists: ${{ secrets.VERCEL_TOKEN != '' }}"
+        echo "USER_ID exists: ${{ secrets.USER_ID != '' }}"
+        echo "PROJECT_ID exists: ${{ secrets.PROJECT_ID != '' }}"
+        
     - name: Deploy to Vercel
       uses: amondnet/vercel-action@v25
       with:
