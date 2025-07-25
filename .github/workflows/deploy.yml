@@ -32,7 +32,7 @@ jobs:
       
     - name: Deploy to Vercel
       run: |
-        vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --yes
+        vercel --token="${{ secrets.VERCEL_TOKEN }}" --prod --yes
       env:
         VERCEL_ORG_ID: ${{ secrets.USER_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.PROJECT_ID }}
