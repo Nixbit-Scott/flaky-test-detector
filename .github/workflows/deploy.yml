@@ -3,8 +3,6 @@ name: Deploy to Vercel
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   deploy:
@@ -21,7 +19,7 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm install
+      run: npm ci
       
     - name: Build shared package
       run: npm run build:shared
@@ -30,11 +28,8 @@ jobs:
       run: npm run build:frontend
       
     - name: Deploy to Vercel
-      uses: amondnet/vercel-action@v25
+      uses: vercel/action-deploy@v1
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
         vercel-org-id: ${{ secrets.USER_ID }}
         vercel-project-id: ${{ secrets.PROJECT_ID }}
-        working-directory: ./
-        vercel-args: '--prod'
