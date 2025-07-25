@@ -1,6 +1,0 @@
-{
-  "buildCommand": "npm run build:frontend",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "npm install && npm run build:shared",
-  "framework": null
-}
