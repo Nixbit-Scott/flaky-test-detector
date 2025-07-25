@@ -1,14 +1,18 @@
 // API Configuration for different environments
 
 const getApiBaseUrl = (): string => {
-  // In production, use the environment variable pointing to the backend service
-  // In development, use relative paths (Vite proxy handles this)
-  if (import.meta.env.PROD && import.meta.env.VITE_API_URL) {
+  // In production, use Netlify Functions
+  if (import.meta.env.PROD) {
+    return '/.netlify/functions';
+  }
+  
+  // In development, use environment variable or fallback to localhost
+  if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
   
-  // Development mode - use relative paths (proxy will handle)
-  return '';
+  // Development fallback
+  return 'http://localhost:3001/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

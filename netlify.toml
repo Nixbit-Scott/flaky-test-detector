@@ -1,0 +1,27 @@
+[build]
+  publish = "frontend/dist"
+  command = "npm run build:shared && npm run build:frontend && cd backend && npx prisma generate"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[dev]
+  command = "npm run dev:frontend"
+  targetPort = 5173
+  port = 8888
+  publish = "frontend/dist"
+  autoLaunch = true
