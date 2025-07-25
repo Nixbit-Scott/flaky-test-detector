@@ -41,4 +41,5 @@ jobs:
         vercel-org-id: ${{ secrets.USER_ID }}
         vercel-project-id: ${{ secrets.PROJECT_ID }}
         working-directory: ./
+        scope: ${{ secrets.USER_ID }}
         vercel-args: '--prod'
