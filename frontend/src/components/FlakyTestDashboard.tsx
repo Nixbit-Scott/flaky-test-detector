@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 
 interface FlakyTest {
-  id: string;
   testName: string;
-  testSuite?: string;
   failureRate: number;
+  avgDuration: number;
+  durationVariance: number;
   totalRuns: number;
-  failedRuns: number;
+  failures: number;
+  reasons: string[];
   confidence: number;
-  lastSeen: string;
-  isActive: boolean;
+  lastFailure?: string;
+  recommendation: string;
 }
 
 interface FlakyTestAnalysis {
@@ -55,41 +57,35 @@ const FlakyTestDashboard: React.FC<FlakyTestDashboardProps> = ({ projectId }) =>
   const fetchFlakyTests = async () => {
     try {
       setLoading(true);
-      setError(''); // Clear previous errors
+      setError('');
       
-      console.log('Fetching flaky tests for project:', projectId);
-      console.log('Using token:', token ? 'Present' : 'Missing');
-      
-      const [testsResponse, statsResponse] = await Promise.all([
-        fetch(`/api/flaky-tests/${projectId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`/api/flaky-tests/${projectId}/stats`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
+      const response = await fetch(`${API_BASE_URL}/flaky-analysis?projectId=${projectId}`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      console.log('Tests response status:', testsResponse.status);
-      console.log('Stats response status:', statsResponse.status);
+      const data = await response.json();
 
-      const testsData = await testsResponse.json();
-      const statsData = await statsResponse.json();
-
-      if (!testsResponse.ok) {
-        console.error('Tests API error:', testsData);
-        throw new Error(testsData.error || 'Failed to fetch flaky tests');
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch flaky analysis');
       }
 
-      if (!statsResponse.ok) {
-        console.error('Stats API error:', statsData);
-        // Stats failure shouldn't block the main component
-        setStats(null);
-      } else {
-        setStats(statsData.stats);
-      }
-
-      setFlakyTests(testsData.flakyTests || []);
-      console.log('Loaded flaky tests:', testsData.flakyTests?.length || 0);
+      setFlakyTests(data.flakyTests || []);
+      setStats({
+        totalTests: data.summary.totalTests,
+        flakyTests: data.summary.flakyTests,
+        averageFailureRate: data.summary.avgFailureRate,
+        averageConfidence: data.flakyTests.length > 0 
+          ? data.flakyTests.reduce((sum: number, test: FlakyTest) => sum + test.confidence, 0) / data.flakyTests.length 
+          : 0,
+        riskDistribution: {
+          high: data.flakyTests.filter((test: FlakyTest) => test.failureRate > 50).length,
+          medium: data.flakyTests.filter((test: FlakyTest) => test.failureRate > 20 && test.failureRate <= 50).length,
+          low: data.flakyTests.filter((test: FlakyTest) => test.failureRate <= 20).length,
+        }
+      });
     } catch (err) {
       console.error('Error fetching flaky tests:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch flaky tests');

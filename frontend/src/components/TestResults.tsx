@@ -1,30 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 
 interface TestResult {
-  id: string;
-  testName: string;
-  testSuite?: string;
+  name: string;
   status: 'passed' | 'failed' | 'skipped';
   duration?: number;
   errorMessage?: string;
-  retryAttempt: number;
+  stackTrace?: string;
+  retryCount?: number;
 }
 
 interface TestRun {
   id: string;
+  projectId: string;
+  testSuiteName: string;
   branch: string;
   commit: string;
-  buildId?: string;
-  buildUrl?: string;
-  startedAt: string;
-  completedAt?: string;
-  status: string;
-  totalTests: number;
-  passedTests: number;
-  failedTests: number;
-  skippedTests: number;
-  testResults: TestResult[];
+  buildNumber?: string;
+  timestamp: string;
+  userId: string;
+  tests: TestResult[];
+  createdAt: string;
 }
 
 interface TestResultsProps {
@@ -42,7 +39,7 @@ const TestResults: React.FC<TestResultsProps> = ({ projectId }) => {
   const fetchTestRuns = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/test-results/${projectId}`, {
+      const response = await fetch(`${API_BASE_URL}/test-results?projectId=${projectId}&limit=20`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -54,7 +51,7 @@ const TestResults: React.FC<TestResultsProps> = ({ projectId }) => {
         throw new Error(data.error || 'Failed to fetch test results');
       }
 
-      setTestRuns(data.testRuns);
+      setTestRuns(data.testResults || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch test results');
     } finally {
@@ -73,6 +70,16 @@ const TestResults: React.FC<TestResultsProps> = ({ projectId }) => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  // Calculate run statistics from test results
+  const getRunStats = (run: TestRun) => {
+    const total = run.tests.length;
+    const passed = run.tests.filter(t => t.status === 'passed').length;
+    const failed = run.tests.filter(t => t.status === 'failed').length;
+    const skipped = run.tests.filter(t => t.status === 'skipped').length;
+    
+    return { total, passed, failed, skipped };
   };
 
   const formatDuration = (ms?: number) => {
@@ -144,6 +151,8 @@ const TestResults: React.FC<TestResultsProps> = ({ projectId }) => {
   }
 
   if (selectedRun) {
+    const stats = getRunStats(selectedRun);
+    
     return (
       <div className="space-y-6">
         {/* Back button and run info */}
@@ -159,8 +168,8 @@ const TestResults: React.FC<TestResultsProps> = ({ projectId }) => {
           </button>
           
           <div className="text-right">
-            <h3 className="font-semibold text-gray-900">Test Run Details</h3>
-            <p className="text-sm text-gray-500">{formatDate(selectedRun.startedAt)}</p>
+            <h3 className="font-semibold text-gray-900">{selectedRun.testSuiteName}</h3>
+            <p className="text-sm text-gray-500">{formatDate(selectedRun.timestamp)}</p>
           </div>
         </div>
 
@@ -168,19 +177,19 @@ const TestResults: React.FC<TestResultsProps> = ({ projectId }) => {
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{selectedRun.passedTests}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.passed}</div>
               <div className="text-sm text-gray-500">Passed</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{selectedRun.failedTests}</div>
+              <div className="text-2xl font-bold text-red-600">{stats.failed}</div>
               <div className="text-sm text-gray-500">Failed</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">{selectedRun.skippedTests}</div>
+              <div className="text-2xl font-bold text-yellow-600">{stats.skipped}</div>
               <div className="text-sm text-gray-500">Skipped</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-600">{selectedRun.totalTests}</div>
+              <div className="text-2xl font-bold text-gray-600">{stats.total}</div>
               <div className="text-sm text-gray-500">Total</div>
             </div>
           </div>
@@ -188,10 +197,8 @@ const TestResults: React.FC<TestResultsProps> = ({ projectId }) => {
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
             <span>Branch: <code className="bg-gray-100 px-1 rounded">{selectedRun.branch}</code></span>
             <span>Commit: <code className="bg-gray-100 px-1 rounded">{selectedRun.commit.slice(0, 7)}</code></span>
-            {selectedRun.buildUrl && (
-              <a href={selectedRun.buildUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800">
-                View Build
-              </a>
+            {selectedRun.buildNumber && (
+              <span>Build: <code className="bg-gray-100 px-1 rounded">#{selectedRun.buildNumber}</code></span>
             )}
           </div>
         </div>
@@ -199,32 +206,40 @@ const TestResults: React.FC<TestResultsProps> = ({ projectId }) => {
         {/* Individual test results */}
         <div className="bg-white border border-gray-200 rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h4 className="font-medium text-gray-900">Individual Test Results</h4>
+            <h4 className="font-medium text-gray-900">Individual Test Results ({selectedRun.tests.length} tests)</h4>
           </div>
           <div className="divide-y divide-gray-200">
-            {selectedRun.testResults.map((test) => (
-              <div key={test.id} className="px-6 py-4">
+            {selectedRun.tests.map((test, index) => (
+              <div key={`${selectedRun.id}-${test.name}-${index}`} className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(test.status)}`}>
                         {test.status}
                       </span>
-                      <span className="font-medium text-gray-900">{test.testName}</span>
-                      {test.testSuite && (
-                        <span className="text-sm text-gray-500">in {test.testSuite}</span>
-                      )}
+                      <span className="font-medium text-gray-900">{test.name}</span>
                     </div>
                     {test.errorMessage && (
                       <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
-                        {test.errorMessage}
+                        <div className="font-medium">Error:</div>
+                        <div className="mt-1">{test.errorMessage}</div>
                       </div>
+                    )}
+                    {test.stackTrace && (
+                      <details className="mt-2">
+                        <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-800">
+                          View Stack Trace
+                        </summary>
+                        <div className="mt-2 text-xs text-gray-700 bg-gray-50 p-2 rounded font-mono whitespace-pre-wrap">
+                          {test.stackTrace}
+                        </div>
+                      </details>
                     )}
                   </div>
                   <div className="text-right text-sm text-gray-500">
                     <div>Duration: {formatDuration(test.duration)}</div>
-                    {test.retryAttempt > 0 && (
-                      <div className="text-orange-600">Retry #{test.retryAttempt}</div>
+                    {test.retryCount && test.retryCount > 0 && (
+                      <div className="text-orange-600">Retries: {test.retryCount}</div>
                     )}
                   </div>
                 </div>
@@ -249,44 +264,57 @@ const TestResults: React.FC<TestResultsProps> = ({ projectId }) => {
       </div>
 
       <div className="space-y-4">
-        {testRuns.map((run) => (
-          <div
-            key={run.id}
-            className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setSelectedRun(run)}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRunStatusColor(run.status)}`}>
-                  {run.status}
-                </span>
-                <span className="font-medium text-gray-900">
-                  {run.branch} • {run.commit.slice(0, 7)}
-                </span>
+        {testRuns.map((run) => {
+          const stats = getRunStats(run);
+          const runStatus = stats.failed > 0 ? 'failed' : 'completed';
+          
+          return (
+            <div
+              key={run.id}
+              className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => setSelectedRun(run)}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRunStatusColor(runStatus)}`}>
+                    {runStatus}
+                  </span>
+                  <span className="font-medium text-gray-900">
+                    {run.testSuiteName}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {run.branch} • {run.commit.slice(0, 7)}
+                  </span>
+                  {run.buildNumber && (
+                    <span className="text-sm text-gray-500">
+                      Build #{run.buildNumber}
+                    </span>
+                  )}
+                </div>
+                <span className="text-sm text-gray-500">{formatDate(run.timestamp)}</span>
               </div>
-              <span className="text-sm text-gray-500">{formatDate(run.startedAt)}</span>
-            </div>
 
-            <div className="grid grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-lg font-semibold text-green-600">{run.passedTests}</div>
-                <div className="text-xs text-gray-500">Passed</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-red-600">{run.failedTests}</div>
-                <div className="text-xs text-gray-500">Failed</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-yellow-600">{run.skippedTests}</div>
-                <div className="text-xs text-gray-500">Skipped</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-gray-600">{run.totalTests}</div>
-                <div className="text-xs text-gray-500">Total</div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-green-600">{stats.passed}</div>
+                  <div className="text-xs text-gray-500">Passed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-red-600">{stats.failed}</div>
+                  <div className="text-xs text-gray-500">Failed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-yellow-600">{stats.skipped}</div>
+                  <div className="text-xs text-gray-500">Skipped</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-gray-600">{stats.total}</div>
+                  <div className="text-xs text-gray-500">Total</div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
