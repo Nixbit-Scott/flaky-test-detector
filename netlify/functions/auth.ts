@@ -1,5 +1,8 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { z } from 'zod';
+import * as bcrypt from 'bcrypt';
+import * as jwt from 'jsonwebtoken';
+import { getPrismaClient } from './db';
 
 // Common headers for CORS
 const headers = {
@@ -94,17 +97,51 @@ async function handleRegister(event: HandlerEvent) {
     
     const validatedData = registerSchema.parse(body);
     
-    // For now, return success without database operations
-    // TODO: Connect to database once Prisma is working
-    const mockUser = {
-      id: 'user-' + Date.now(),
-      email: validatedData.email,
-      name: validatedData.name || 'User',
-      createdAt: new Date().toISOString(),
-    };
+    const prisma = getPrismaClient();
+    
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: validatedData.email }
+    });
+    
+    if (existingUser) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'User already exists with this email',
+        }),
+      };
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+    
+    // Create user in database
+    const user = await prisma.user.create({
+      data: {
+        email: validatedData.email,
+        password: hashedPassword,
+        name: validatedData.name || null,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+      }
+    });
 
-    // Generate a simple mock token
-    const mockToken = 'token-' + Date.now();
+    // Generate JWT token
+    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email 
+      },
+      jwtSecret,
+      { expiresIn: '7d' }
+    );
 
     console.log('Registration successful for:', validatedData.email);
 
@@ -113,8 +150,8 @@ async function handleRegister(event: HandlerEvent) {
       headers,
       body: JSON.stringify({
         message: 'User created successfully',
-        user: mockUser,
-        token: mockToken,
+        user,
+        token,
       }),
     };
   } catch (error) {
@@ -164,23 +201,70 @@ async function handleLogin(event: HandlerEvent) {
     const body = JSON.parse(event.body || '{}');
     const validatedData = loginSchema.parse(body);
     
-    // Mock login - accept any email/password for now
-    const mockUser = {
-      id: 'user-' + Date.now(),
-      email: validatedData.email,
-      name: 'Demo User',
-      createdAt: new Date().toISOString(),
-    };
+    const prisma = getPrismaClient();
+    
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email: validatedData.email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        password: true,
+        createdAt: true,
+      }
+    });
+    
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({
+          error: 'Invalid credentials',
+        }),
+      };
+    }
+    
+    // Verify password
+    const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+    
+    if (!isValidPassword) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({
+          error: 'Invalid credentials',
+        }),
+      };
+    }
+    
+    // Update last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    });
 
-    const mockToken = 'token-' + Date.now();
+    // Generate JWT token
+    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email 
+      },
+      jwtSecret,
+      { expiresIn: '7d' }
+    );
+
+    // Return user without password
+    const { password, ...userWithoutPassword } = user;
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         message: 'Login successful',
-        user: mockUser,
-        token: mockToken,
+        user: userWithoutPassword,
+        token,
       }),
     };
   } catch (error) {
@@ -243,22 +327,53 @@ async function handleMe(event: HandlerEvent) {
       };
     }
 
-    // Mock user validation
-    const mockUser = {
-      id: 'user-demo',
-      email: 'demo@example.com',
-      name: 'Demo User',
-      createdAt: new Date().toISOString(),
-    };
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
+    
+    // Verify JWT token
+    const decoded = jwt.verify(token, jwtSecret) as { userId: string; email: string };
+    
+    const prisma = getPrismaClient();
+    
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        lastLoginAt: true,
+        isSystemAdmin: true,
+      }
+    });
+    
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'User not found' }),
+      };
+    }
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        user: mockUser,
+        user,
       }),
     };
   } catch (error) {
+    console.error('Auth verification error:', error);
+    
+    if (error instanceof jwt.JsonWebTokenError) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Invalid token' }),
+      };
+    }
+    
     return {
       statusCode: 500,
       headers,
