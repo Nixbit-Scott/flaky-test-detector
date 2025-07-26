@@ -1,18 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
 
 const AuthFlow: React.FC = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [showSuccess, setShowSuccess] = useState(false);
+  
+  // Determine if we should show login or register based on the current path
+  const isLogin = location.pathname === '/login';
 
   const handleRegisterSuccess = () => {
     setShowSuccess(true);
     setTimeout(() => {
       setShowSuccess(false);
-      setIsLogin(true);
+      navigate('/login');
     }, 3000);
   };
+
+  const switchToRegister = () => {
+    navigate('/register');
+  };
+
+  const switchToLogin = () => {
+    navigate('/login');
+  };
+
+  // If neither login nor register, default to login
+  useEffect(() => {
+    if (location.pathname !== '/login' && location.pathname !== '/register') {
+      navigate('/login', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   if (showSuccess) {
     return (
@@ -27,7 +47,7 @@ const AuthFlow: React.FC = () => {
   }
 
   if (isLogin) {
-    return <LoginForm onSwitchToRegister={() => setIsLogin(false)} />;
+    return <LoginForm onSwitchToRegister={switchToRegister} />;
   }
 
   return (
@@ -35,7 +55,7 @@ const AuthFlow: React.FC = () => {
       <RegisterForm onSuccess={handleRegisterSuccess} />
       <div className="text-center mt-4">
         <button
-          onClick={() => setIsLogin(true)}
+          onClick={switchToLogin}
           className="text-indigo-600 hover:text-indigo-500 text-sm"
         >
           Already have an account? Sign in
