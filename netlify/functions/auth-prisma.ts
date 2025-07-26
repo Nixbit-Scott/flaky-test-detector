@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { getPrismaClient } from './db';
+import { createMonitor, extractUserContext } from './monitoring-utils';
 
 // Common headers for CORS
 const headers = {
@@ -25,6 +26,8 @@ const loginSchema = z.object({
 });
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+  const monitor = createMonitor('auth-prisma');
+  
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -45,25 +48,51 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     const pathParts = event.path.split('/');
     const path = pathParts[pathParts.length - 1];
     
+    let result;
     // Handle different auth endpoints
     switch (path) {
       case 'register':
-        return await handleRegister(event);
+        result = await handleRegister(event);
+        break;
       case 'login':
-        return await handleLogin(event);
+        result = await handleLogin(event);
+        break;
       case 'logout':
-        return await handleLogout(event);
+        result = await handleLogout(event);
+        break;
       case 'me':
-        return await handleMe(event);
+        result = await handleMe(event);
+        break;
       default:
-        return {
+        result = {
           statusCode: 404,
           headers,
           body: JSON.stringify({ error: 'Auth endpoint not found' }),
         };
     }
+    
+    // Log successful execution
+    await monitor.logPerformance({
+      metadata: { 
+        endpoint: path, 
+        statusCode: result.statusCode,
+        httpMethod: event.httpMethod
+      }
+    });
+    
+    return result;
   } catch (error) {
     console.error('Auth function error:', error);
+    
+    // Log error with context
+    await monitor.logError(error instanceof Error ? error : new Error(String(error)), {
+      ...extractUserContext(event),
+      metadata: { 
+        endpoint: event.path,
+        httpMethod: event.httpMethod 
+      }
+    });
+    
     return {
       statusCode: 500,
       headers,
@@ -144,6 +173,25 @@ async function handleRegister(event: HandlerEvent) {
     );
 
     console.log('Registration successful for:', validatedData.email);
+
+    // Send welcome email
+    try {
+      await fetch('/.netlify/functions/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: user.email,
+          template: 'welcome',
+          data: {
+            name: user.name || 'User',
+            email: user.email,
+          },
+        }),
+      });
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Don't fail registration if email fails
+    }
 
     return {
       statusCode: 201,
