@@ -38,6 +38,12 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
   }
 
   try {
+    console.log('Auth function called:', {
+      path: event.path,
+      httpMethod: event.httpMethod,
+      body: event.body
+    });
+    
     // Extract the path after /api/auth/
     const path = event.path.replace('/api/auth/', '').replace('/.netlify/functions/auth/', '');
     
@@ -78,7 +84,19 @@ async function handleRegister(event: HandlerEvent) {
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
+    console.log('Register body:', event.body);
+    
+    if (!event.body) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Request body is required' }),
+      };
+    }
+    
+    const body = JSON.parse(event.body);
+    console.log('Parsed body:', body);
+    
     const validatedData = registerSchema.parse(body);
     
     // Check if user already exists
@@ -136,6 +154,16 @@ async function handleRegister(event: HandlerEvent) {
     };
   } catch (error) {
     console.error('Registration error:', error);
+    
+    if (error instanceof SyntaxError) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Invalid JSON in request body',
+        }),
+      };
+    }
     
     if (error instanceof z.ZodError) {
       return {
