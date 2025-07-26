@@ -2,9 +2,7 @@ import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { z } from 'zod';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
-
-// For now, let's use a simple database connection without Prisma
-// We'll create users in a way that works with Netlify Functions
+import { getPrismaClient } from './db';
 
 // Common headers for CORS
 const headers = {
@@ -26,16 +24,6 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-// Simple in-memory store for demo (in production, this would be database)
-// This will reset on each function cold start, but good for testing
-const users: Map<string, {
-  id: string;
-  email: string;
-  name: string;
-  password: string;
-  createdAt: string;
-}> = new Map();
-
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -50,6 +38,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     console.log('Auth function called:', {
       path: event.path,
       httpMethod: event.httpMethod,
+      body: event.body
     });
     
     // Extract the path - get the last segment after the last slash
@@ -108,8 +97,14 @@ async function handleRegister(event: HandlerEvent) {
     
     const validatedData = registerSchema.parse(body);
     
+    const prisma = getPrismaClient();
+    
     // Check if user already exists
-    if (users.has(validatedData.email)) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: validatedData.email }
+    });
+    
+    if (existingUser) {
       return {
         statusCode: 400,
         headers,
@@ -122,19 +117,21 @@ async function handleRegister(event: HandlerEvent) {
     // Hash password
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
     
-    // Create user
-    const userId = 'user-' + Date.now();
-    const user = {
-      id: userId,
-      email: validatedData.email,
-      password: hashedPassword,
-      name: validatedData.name || 'User',
-      createdAt: new Date().toISOString(),
-    };
-    
-    // Store user
-    users.set(validatedData.email, user);
-    
+    // Create user in database
+    const user = await prisma.user.create({
+      data: {
+        email: validatedData.email,
+        password: hashedPassword,
+        name: validatedData.name || null,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+      }
+    });
+
     // Generate JWT token
     const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
     const token = jwt.sign(
@@ -147,16 +144,13 @@ async function handleRegister(event: HandlerEvent) {
     );
 
     console.log('Registration successful for:', validatedData.email);
-    
-    // Return user without password
-    const { password, ...userWithoutPassword } = user;
 
     return {
       statusCode: 201,
       headers,
       body: JSON.stringify({
         message: 'User created successfully',
-        user: userWithoutPassword,
+        user,
         token,
       }),
     };
@@ -207,8 +201,19 @@ async function handleLogin(event: HandlerEvent) {
     const body = JSON.parse(event.body || '{}');
     const validatedData = loginSchema.parse(body);
     
-    // Find user
-    const user = users.get(validatedData.email);
+    const prisma = getPrismaClient();
+    
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email: validatedData.email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        password: true,
+        createdAt: true,
+      }
+    });
     
     if (!user) {
       return {
@@ -232,6 +237,12 @@ async function handleLogin(event: HandlerEvent) {
         }),
       };
     }
+    
+    // Update last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    });
 
     // Generate JWT token
     const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
@@ -316,14 +327,26 @@ async function handleMe(event: HandlerEvent) {
       };
     }
 
-    const token = authHeader.substring(7);
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
     
     // Verify JWT token
     const decoded = jwt.verify(token, jwtSecret) as { userId: string; email: string };
     
-    // Find user
-    const user = users.get(decoded.email);
+    const prisma = getPrismaClient();
+    
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        lastLoginAt: true,
+        isSystemAdmin: true,
+      }
+    });
     
     if (!user) {
       return {
@@ -333,14 +356,11 @@ async function handleMe(event: HandlerEvent) {
       };
     }
 
-    // Return user without password
-    const { password, ...userWithoutPassword } = user;
-
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        user: userWithoutPassword,
+        user,
       }),
     };
   } catch (error) {
