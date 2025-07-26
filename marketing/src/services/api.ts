@@ -60,7 +60,7 @@ export interface MarketingSignupResponse {
 export const marketingApi = {
   async submitSignup(data: MarketingSignupRequest): Promise<MarketingSignupResponse> {
     try {
-      const response = await api.post('/marketing/signup', data);
+      const response = await api.post('/marketing-signup', data);
       return response.data;
     } catch (error: any) {
       if (error.response?.data) {

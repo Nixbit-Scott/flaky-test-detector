@@ -17,10 +17,19 @@ export function useMarketingSignup(options: UseMarketingSignupOptions = {}) {
       setIsSubmitting(true);
       
       // Enhance data with tracking information
+      const utmParams = getStoredUTMParameters();
+      // Filter out undefined values to match schema requirement
+      const cleanUtmParams: Record<string, string> = {};
+      Object.entries(utmParams).forEach(([key, value]) => {
+        if (value !== undefined) {
+          cleanUtmParams[key] = value;
+        }
+      });
+
       const enhancedData: MarketingSignupRequest = {
         ...data,
         source: determineTrafficSource(),
-        utmParameters: getStoredUTMParameters(),
+        utmParameters: cleanUtmParams,
       };
 
       return marketingApi.submitSignup(enhancedData);

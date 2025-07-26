@@ -1,9 +1,10 @@
 [build]
-  publish = "frontend/dist"
-  command = "npm run build:shared && npm run build:frontend"
+  publish = "marketing/dist"
+  command = "npm run build:shared && npm run build:marketing"
 
 [build.environment]
   NODE_VERSION = "18"
+  VITE_API_URL = "/.netlify/functions"
 
 [functions]
   directory = "netlify/functions"
@@ -14,14 +15,21 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
+# Redirect /app/* to the main application (if you want to keep the old app accessible)
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200
+
+# Marketing site SPA routing - catch all other routes
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
 [dev]
-  command = "npm run dev:frontend"
-  targetPort = 5173
+  command = "npm run dev:marketing"
+  targetPort = 5174
   port = 8888
-  publish = "frontend/dist"
+  publish = "marketing/dist"
   autoLaunch = true
