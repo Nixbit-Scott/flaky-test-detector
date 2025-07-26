@@ -8,6 +8,8 @@ import ExecutiveDashboard from './ExecutiveDashboard';
 import OrganizationManagement from './OrganizationManagement';
 import CreateOrganizationModal from './CreateOrganizationModal';
 import ApiDocumentation from './ApiDocumentation';
+import EnhancedAnalyticsDashboard from './EnhancedAnalyticsDashboard';
+import ReportingSystem from './ReportingSystem';
 import Logo from './Logo';
 
 interface Project {
@@ -28,7 +30,7 @@ interface Project {
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const { currentOrganization, organizations } = useOrganization();
-  const [currentView, setCurrentView] = useState<'projects' | 'create' | 'project' | 'executive' | 'organization' | 'api-docs'>('projects');
+  const [currentView, setCurrentView] = useState<'projects' | 'create' | 'project' | 'executive' | 'organization' | 'api-docs' | 'analytics' | 'reports'>('projects');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
@@ -89,6 +91,10 @@ const Dashboard: React.FC = () => {
         );
       case 'api-docs':
         return <ApiDocumentation projectId={selectedProject?.id} />;
+      case 'analytics':
+        return <EnhancedAnalyticsDashboard organizationId={currentOrganization?.id} />;
+      case 'reports':
+        return <ReportingSystem organizationId={currentOrganization?.id} />;
       default:
         return (
           <ProjectList
@@ -130,6 +136,26 @@ const Dashboard: React.FC = () => {
                   }`}
                 >
                   📚 API Documentation
+                </button>
+                <button
+                  onClick={() => setCurrentView('analytics')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    currentView === 'analytics'
+                      ? 'bg-indigo-100 text-indigo-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  📊 Analytics
+                </button>
+                <button
+                  onClick={() => setCurrentView('reports')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    currentView === 'reports'
+                      ? 'bg-indigo-100 text-indigo-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  📋 Reports
                 </button>
                 <button
                   onClick={() => setCurrentView('organization')}
