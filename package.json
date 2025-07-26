@@ -37,7 +37,8 @@
     "typecheck:frontend": "cd frontend && npm run typecheck",
     "typecheck:admin": "cd admin-frontend && npm run typecheck",
     "typecheck:marketing": "cd marketing && npm run typecheck",
-    "setup": "npm install && npm run build:shared"
+    "setup": "npm install && npm run build:shared",
+    "build:deploy": "mkdir -p dist && cp -r marketing/dist/* dist/ && mkdir -p dist/app && cp -r frontend/dist/* dist/app/"
   },
   "devDependencies": {
     "@netlify/functions": "^4.1.15",

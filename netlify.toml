@@ -1,10 +1,11 @@
 [build]
-  publish = "marketing/dist"
-  command = "npm run build:shared && npm run build:marketing"
+  publish = "dist"
+  command = "npm run build:shared && npm run build:marketing && npm run build:frontend && npm run build:deploy"
 
 [build.environment]
   NODE_VERSION = "18"
   VITE_API_URL = "/.netlify/functions"
+  VITE_DASHBOARD_URL = "/app"
 
 [functions]
   directory = "netlify/functions"
@@ -15,7 +16,7 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
-# Redirect /app/* to the main application (if you want to keep the old app accessible)
+# Main application SPA routing - serve frontend app for /app routes
 [[redirects]]
   from = "/app/*"
   to = "/app/index.html"

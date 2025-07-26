@@ -2,11 +2,12 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
+import { appConfig } from '../config/app'
 
 const LoginPage: React.FC = () => {
   const handleRedirectToApp = () => {
     // Redirect to the main application login
-    window.location.href = 'http://localhost:5173/login'
+    window.location.href = `${appConfig.dashboardUrl}/login`
   }
 
   return (
