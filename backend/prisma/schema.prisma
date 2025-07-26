@@ -638,3 +638,26 @@ model MarketingSignup {
   @@index([createdAt])
   @@map("marketing_signups")
 }
+
+model MonitoringLog {
+  id           String   @id @default(cuid())
+  type         String
+  timestamp    DateTime
+  level        String   @default("info")
+  message      String
+  metadata     Json?
+  userId       String?
+  functionName String?
+  duration     Int?
+  stack        String?
+  userAgent    String?
+  url          String?
+  createdAt    DateTime @default(now())
+
+  @@index([type])
+  @@index([level])
+  @@index([timestamp])
+  @@index([functionName])
+  @@index([userId])
+  @@map("monitoring_logs")
+}
