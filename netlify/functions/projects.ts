@@ -96,6 +96,15 @@ async function handleGetProjects(event: HandlerEvent, user: { userId: string; em
       .filter(project => project.userId === user.userId)
       .map(project => ({
         ...project,
+        repository: project.repositoryUrl || 'https://github.com/example/repo',
+        branch: 'main', // Default branch
+        retryEnabled: true,
+        maxRetries: 3,
+        flakyThreshold: 0.2,
+        _count: {
+          testRuns: Math.floor(Math.random() * 200),
+          flakyTests: Math.floor(Math.random() * 10),
+        },
         testCount: Math.floor(Math.random() * 200), // Mock data
         flakyTestCount: Math.floor(Math.random() * 10),
         lastTestRun: new Date().toISOString(),
@@ -150,9 +159,18 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
     // Store project
     projects.set(projectId, project);
 
-    // Add mock stats
+    // Add mock stats and match frontend interface
     const projectWithStats = {
       ...project,
+      repository: project.repositoryUrl || 'https://github.com/example/repo',
+      branch: 'main', // Default branch
+      retryEnabled: true,
+      maxRetries: 3,
+      flakyThreshold: 0.2,
+      _count: {
+        testRuns: 0,
+        flakyTests: 0,
+      },
       testCount: 0,
       flakyTestCount: 0,
       lastTestRun: null,

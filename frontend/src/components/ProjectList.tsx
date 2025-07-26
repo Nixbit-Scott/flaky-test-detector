@@ -33,7 +33,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject, onCreateProj
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/projects`, {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
