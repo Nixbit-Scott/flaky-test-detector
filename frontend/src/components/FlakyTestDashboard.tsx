@@ -237,16 +237,14 @@ const FlakyTestDashboard: React.FC<FlakyTestDashboardProps> = ({ projectId }) =>
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-semibold text-gray-900">{selectedTest.testName}</h3>
-              {selectedTest.testSuite && (
-                <p className="text-gray-600">in {selectedTest.testSuite}</p>
-              )}
+              <p className="text-gray-600">Test Suite Analysis</p>
             </div>
             <div className="flex space-x-3">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${risk.color}`}>
                 {risk.label}
               </span>
               <button
-                onClick={() => markAsResolved(selectedTest.testName, selectedTest.testSuite)}
+                onClick={() => markAsResolved(selectedTest.testName, undefined)}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
               >
                 Mark as Resolved
@@ -271,7 +269,7 @@ const FlakyTestDashboard: React.FC<FlakyTestDashboardProps> = ({ projectId }) =>
               <div className="text-sm text-gray-500">Total Runs</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{selectedTest.failedRuns}</div>
+              <div className="text-2xl font-bold text-red-600">{selectedTest.failures}</div>
               <div className="text-sm text-gray-500">Failed Runs</div>
             </div>
           </div>
@@ -279,7 +277,7 @@ const FlakyTestDashboard: React.FC<FlakyTestDashboardProps> = ({ projectId }) =>
           {/* Additional info */}
           <div className="border-t border-gray-200 pt-4">
             <div className="text-sm text-gray-600">
-              <span className="font-medium">Last seen:</span> {new Date(selectedTest.lastSeen).toLocaleString()}
+              <span className="font-medium">Last failure:</span> {selectedTest.lastFailure ? new Date(selectedTest.lastFailure).toLocaleString() : 'No recent failures'}
             </div>
           </div>
         </div>
@@ -409,7 +407,7 @@ const FlakyTestDashboard: React.FC<FlakyTestDashboardProps> = ({ projectId }) =>
               const risk = getRiskLevel(test.failureRate);
               return (
                 <div
-                  key={test.id}
+                  key={test.testName}
                   className="px-6 py-4 hover:bg-gray-50 cursor-pointer"
                   onClick={() => setSelectedTest(test)}
                 >
@@ -420,18 +418,15 @@ const FlakyTestDashboard: React.FC<FlakyTestDashboardProps> = ({ projectId }) =>
                           {risk.label}
                         </span>
                         <span className="font-medium text-gray-900">{test.testName}</span>
-                        {test.testSuite && (
-                          <span className="text-sm text-gray-500">in {test.testSuite}</span>
-                        )}
                       </div>
                       <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
                         <span>Failure rate: {(test.failureRate * 100).toFixed(1)}%</span>
                         <span>Confidence: <span className={getConfidenceColor(test.confidence)}>{(test.confidence * 100).toFixed(0)}%</span></span>
-                        <span>Runs: {test.failedRuns}/{test.totalRuns}</span>
+                        <span>Runs: {test.failures}/{test.totalRuns}</span>
                       </div>
                     </div>
                     <div className="text-right text-sm text-gray-500">
-                      <div>Last seen: {new Date(test.lastSeen).toLocaleDateString()}</div>
+                      <div>Last failure: {test.lastFailure ? new Date(test.lastFailure).toLocaleDateString() : 'N/A'}</div>
                     </div>
                   </div>
                 </div>
