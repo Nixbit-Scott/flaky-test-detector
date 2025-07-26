@@ -153,7 +153,18 @@ const Footer: React.FC = () => {
             <p className="text-sm text-gray-600">
               © {currentYear} Nixbit. All rights reserved.
             </p>
-            <div className="flex items-center space-x-6 mt-4 md:mt-0">
+            <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-6 mt-4 md:mt-0">
+              <div className="flex items-center space-x-4">
+                <Link to="/privacy" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">
+                  Privacy
+                </Link>
+                <Link to="/terms" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">
+                  Terms
+                </Link>
+                <Link to="/contact" className="text-sm text-gray-500 hover:text-primary-600 transition-colors">
+                  Support
+                </Link>
+              </div>
               <span className="text-sm text-gray-600">Made with ❤️ for developers</span>
             </div>
           </div>

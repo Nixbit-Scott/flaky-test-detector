@@ -221,6 +221,21 @@ const SignupPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Privacy Consent */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-xs text-gray-600 text-center">
+                By requesting beta access, you agree to our{' '}
+                <Link to="/terms" className="text-primary-600 hover:text-primary-500 underline">
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link to="/privacy" className="text-primary-600 hover:text-primary-500 underline">
+                  Privacy Policy
+                </Link>
+                . We'll send you product updates and beta access information.
+              </p>
+            </div>
+
             <div>
               <button
                 type="submit"
