@@ -67,9 +67,9 @@ const WebhookConfig: React.FC<WebhookConfigProps> = ({ projectId: _projectId }) 
       -H "Content-Type: application/json" \\
       -d '{
         "projectId": "your-project-id",
-        "buildStatus": "${{ job.status }}",
-        "branch": "${{ github.ref_name }}",
-        "commit": "${{ github.sha }}",
+        "buildStatus": "\${{ job.status }}",
+        "branch": "\${{ github.ref_name }}",
+        "commit": "\${{ github.sha }}",
         "testResults": {
           "testSuiteName": "CI Tests",
           "tests": [...]
