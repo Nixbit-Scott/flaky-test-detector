@@ -5,14 +5,15 @@ interface WebhookConfigProps {
 }
 
 const WebhookConfig: React.FC<WebhookConfigProps> = ({ projectId: _projectId }) => {
-  const [selectedCI, setSelectedCI] = useState<'github' | 'gitlab' | 'jenkins'>('github');
+  const [selectedCI, setSelectedCI] = useState<'github' | 'gitlab' | 'jenkins' | 'generic'>('github');
   const [copySuccess, setCopySuccess] = useState('');
 
   const baseUrl = window.location.origin;
   const webhookUrls = {
-    github: `${baseUrl}/api/webhooks/github`,
-    gitlab: `${baseUrl}/api/webhooks/gitlab`,
-    jenkins: `${baseUrl}/api/webhooks/jenkins`,
+    github: `${baseUrl}/.netlify/functions/webhook-github`,
+    gitlab: `${baseUrl}/.netlify/functions/webhook-gitlab`,
+    jenkins: `${baseUrl}/.netlify/functions/webhook-jenkins`,
+    generic: `${baseUrl}/.netlify/functions/webhook-generic`,
   };
 
   const copyToClipboard = async (text: string) => {
@@ -47,11 +48,35 @@ const WebhookConfig: React.FC<WebhookConfigProps> = ({ projectId: _projectId }) 
           2. Content type: <code className="bg-white px-1 rounded">application/json</code>
         </p>
         <p className="text-sm text-gray-700 mb-2">
-          3. Select events: <strong>Workflow runs</strong>
+          3. Select events: <strong>Workflow runs</strong> and <strong>Check runs</strong>
         </p>
-        <p className="text-sm text-gray-700">
-          4. Make sure webhook is active and save
+        <p className="text-sm text-gray-700 mb-4">
+          4. Set as Active and click "Add webhook"
         </p>
+        
+        <div className="mt-4 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
+          <h5 className="font-medium text-blue-900 mb-2">Optional: Enhanced Integration</h5>
+          <p className="text-sm text-blue-800 mb-2">
+            For better test result extraction, add this step to your GitHub Actions workflow:
+          </p>
+          <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
+{`- name: Report Test Results
+  if: always()
+  run: |
+    curl -X POST ${webhookUrls.github} \\
+      -H "Content-Type: application/json" \\
+      -d '{
+        "projectId": "your-project-id",
+        "buildStatus": "${{ job.status }}",
+        "branch": "${{ github.ref_name }}",
+        "commit": "${{ github.sha }}",
+        "testResults": {
+          "testSuiteName": "CI Tests",
+          "tests": [...]
+        }
+      }'`}
+          </pre>
+        </div>
       </div>
     </div>
   );
@@ -74,14 +99,35 @@ const WebhookConfig: React.FC<WebhookConfigProps> = ({ projectId: _projectId }) 
           </button>
         </div>
         <p className="text-sm text-gray-700 mb-2">
-          2. Trigger: <strong>Pipeline events</strong>
+          2. Trigger: <strong>Pipeline events</strong> and <strong>Job events</strong>
         </p>
         <p className="text-sm text-gray-700 mb-2">
           3. SSL verification: Enable (recommended)
         </p>
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-gray-700 mb-4">
           4. Add webhook
         </p>
+        
+        <div className="mt-4 p-3 bg-orange-50 rounded border-l-4 border-orange-400">
+          <h5 className="font-medium text-orange-900 mb-2">Optional: Enhanced Integration</h5>
+          <p className="text-sm text-orange-800 mb-2">
+            Add this to your .gitlab-ci.yml for better test result reporting:
+          </p>
+          <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
+{`after_script:
+  - |
+    curl -X POST ${webhookUrls.gitlab} \\
+      -H "Content-Type: application/json" \\
+      -d '{
+        "projectId": "your-project-id",
+        "buildStatus": "'$CI_JOB_STATUS'",
+        "branch": "'$CI_COMMIT_REF_NAME'",
+        "commit": "'$CI_COMMIT_SHA'",
+        "buildNumber": "'$CI_PIPELINE_ID'",
+        "testResults": {...}
+      }'`}
+          </pre>
+        </div>
       </div>
     </div>
   );
@@ -91,10 +137,10 @@ const WebhookConfig: React.FC<WebhookConfigProps> = ({ projectId: _projectId }) 
       <h4 className="font-medium text-gray-900">Jenkins Setup</h4>
       <div className="bg-gray-50 p-4 rounded-lg">
         <p className="text-sm text-gray-700 mb-3">
-          1. Install the "Notification Plugin" in Jenkins
+          1. Install the "Notification Plugin" or "Generic Webhook Trigger Plugin"
         </p>
         <p className="text-sm text-gray-700 mb-3">
-          2. In your job configuration → Post-build Actions → Notification Endpoint
+          2. In your job configuration → Post-build Actions → HTTP Request
         </p>
         <div className="flex items-center space-x-2 mb-3">
           <span className="text-sm font-medium text-gray-700">URL:</span>
@@ -107,11 +153,108 @@ const WebhookConfig: React.FC<WebhookConfigProps> = ({ projectId: _projectId }) 
           </button>
         </div>
         <p className="text-sm text-gray-700 mb-2">
-          3. Event: <strong>Job Completed</strong>
+          3. HTTP Mode: <strong>POST</strong>
         </p>
-        <p className="text-sm text-gray-700">
-          4. Save job configuration
+        <p className="text-sm text-gray-700 mb-4">
+          4. Content Type: <strong>application/json</strong>
         </p>
+        
+        <div className="mt-4 p-3 bg-red-50 rounded border-l-4 border-red-400">
+          <h5 className="font-medium text-red-900 mb-2">Sample Request Body</h5>
+          <p className="text-sm text-red-800 mb-2">
+            Configure the request body with this JSON structure:
+          </p>
+          <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
+{`{
+  "jobName": "$JOB_NAME",
+  "buildNumber": $BUILD_NUMBER,
+  "buildStatus": "$BUILD_STATUS",
+  "buildUrl": "$BUILD_URL",
+  "gitBranch": "$GIT_BRANCH",
+  "gitCommit": "$GIT_COMMIT",
+  "testResults": {
+    "totalCount": 10,
+    "failCount": 0,
+    "passCount": 10
+  }
+}`}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderGenericInstructions = () => (
+    <div className="space-y-4">
+      <h4 className="font-medium text-gray-900">Generic Webhook Setup</h4>
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <p className="text-sm text-gray-700 mb-3">
+          Use this endpoint for any CI/CD system (CircleCI, Travis CI, Azure DevOps, etc.)
+        </p>
+        <div className="flex items-center space-x-2 mb-4">
+          <span className="text-sm font-medium text-gray-700">Webhook URL:</span>
+          <code className="bg-white px-2 py-1 rounded border text-sm flex-1">{webhookUrls.generic}</code>
+          <button
+            onClick={() => copyToClipboard(webhookUrls.generic)}
+            className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          >
+            Copy
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="p-3 bg-green-50 rounded border-l-4 border-green-400">
+            <h5 className="font-medium text-green-900 mb-2">Flexible JSON Format</h5>
+            <p className="text-sm text-green-800 mb-2">
+              Send a POST request with any of these formats:
+            </p>
+            <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
+{`// Comprehensive format
+{
+  "projectId": "your-project-id",
+  "buildStatus": "success|failure|error",
+  "branch": "main",
+  "commit": "abc123",
+  "buildNumber": "42",
+  "testResults": {
+    "testSuiteName": "My Tests",
+    "tests": [
+      {
+        "name": "test_login",
+        "status": "passed",
+        "duration": 150,
+        "errorMessage": "Optional error message"
+      }
+    ]
+  }
+}`}
+            </pre>
+          </div>
+          
+          <div className="p-3 bg-yellow-50 rounded border-l-4 border-yellow-400">
+            <h5 className="font-medium text-yellow-900 mb-2">Minimal Format</h5>
+            <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
+{`// Simple format - we'll generate mock test data
+{
+  "status": "success",
+  "project": "my-project",
+  "branch": "main",
+  "commit": "abc123"
+}`}
+            </pre>
+          </div>
+          
+          <div className="p-3 bg-purple-50 rounded border-l-4 border-purple-400">
+            <h5 className="font-medium text-purple-900 mb-2">Headers (Optional)</h5>
+            <p className="text-sm text-purple-800 mb-2">
+              Include these headers for better categorization:
+            </p>
+            <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
+{`X-CI-System: CircleCI
+Content-Type: application/json`}
+            </pre>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -172,6 +315,21 @@ const WebhookConfig: React.FC<WebhookConfigProps> = ({ projectId: _projectId }) 
             </svg>
             Jenkins
           </button>
+          
+          <button
+            onClick={() => setSelectedCI('generic')}
+            className={`flex items-center px-4 py-2 rounded-lg border ${
+              selectedCI === 'generic'
+                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Other/Generic
+          </button>
         </div>
       </div>
 
@@ -180,6 +338,7 @@ const WebhookConfig: React.FC<WebhookConfigProps> = ({ projectId: _projectId }) 
         {selectedCI === 'github' && renderGitHubInstructions()}
         {selectedCI === 'gitlab' && renderGitLabInstructions()}
         {selectedCI === 'jenkins' && renderJenkinsInstructions()}
+        {selectedCI === 'generic' && renderGenericInstructions()}
       </div>
 
       {/* Additional Info */}
