@@ -107,7 +107,6 @@ const Dashboard: React.FC = () => {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-8">
               <Logo size="lg" showPulse={true} />
-              <span className="text-xs text-red-500">API-DOCS-BUILD-v2</span>
               <nav className="flex space-x-4">
                 <button
                   onClick={() => setCurrentView('projects')}
