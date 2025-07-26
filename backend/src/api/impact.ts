@@ -370,7 +370,7 @@ router.get('/project/:projectId/recommendations', authMiddleware, async (req, re
     }
 
     // Get latest calculation or calculate new impact
-    let recommendations = [];
+    let recommendations: string[] = [];
     const latestCalculation = await prisma.impactCalculation.findFirst({
       where: { projectId },
       orderBy: { calculationDate: 'desc' }

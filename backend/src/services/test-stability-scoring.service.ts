@@ -248,7 +248,7 @@ export class TestStabilityScoringService {
   private calculateTimeToStabilize(testResults: any[]): number {
     // Find the most recent period of stability (7+ consecutive successes)
     const stabilityThreshold = 7;
-    let stabilityStart = null;
+    let stabilityStart: Date | null = null;
 
     for (let i = testResults.length - 1; i >= stabilityThreshold - 1; i--) {
       const window = testResults.slice(i - stabilityThreshold + 1, i + 1);
@@ -418,7 +418,7 @@ export class TestStabilityScoringService {
   }
 
   private calculateIntervals(period: 'daily' | 'weekly' | 'monthly', count: number) {
-    const intervals = [];
+    const intervals: Array<{ start: Date; end: Date }> = [];
     const now = new Date();
     
     for (let i = count - 1; i >= 0; i--) {
@@ -577,7 +577,7 @@ export class TestStabilityScoringService {
   }
 
   private generateInsights(scores: StabilityScore[], dailyTrend: TrendAnalysis): string[] {
-    const insights = [];
+    const insights: string[] = [];
 
     // Overall health insight
     const avgScore = scores.reduce((sum, s) => sum + s.currentScore, 0) / scores.length;
@@ -621,7 +621,7 @@ export class TestStabilityScoringService {
   }
 
   private generateRecommendations(scores: StabilityScore[], insights: string[]): string[] {
-    const recommendations = [];
+    const recommendations: string[] = [];
 
     // Focus on critical tests
     const criticalTests = scores.filter(s => s.riskLevel === 'critical');

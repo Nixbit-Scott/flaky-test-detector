@@ -112,8 +112,8 @@ router.post('/batch-analyze', authMiddleware, async (req, res) => {
       return;
     }
 
-    const results = [];
-    const errors = [];
+    const results: any[] = [];
+    const errors: any[] = [];
 
     for (const file of files) {
       try {
@@ -573,8 +573,8 @@ router.post('/bulk-feedback', authMiddleware, async (req, res) => {
 
     const { feedbacks } = bulkFeedbackSchema.parse(req.body);
 
-    const results = [];
-    const errors = [];
+    const results: any[] = [];
+    const errors: any[] = [];
 
     for (const feedbackData of feedbacks) {
       try {

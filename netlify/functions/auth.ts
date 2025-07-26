@@ -44,8 +44,9 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       body: event.body
     });
     
-    // Extract the path after /api/auth/
-    const path = event.path.replace('/api/auth/', '').replace('/.netlify/functions/auth/', '');
+    // Extract the path - get the last segment after the last slash
+    const pathParts = event.path.split('/');
+    const path = pathParts[pathParts.length - 1];
     
     // Handle different auth endpoints
     switch (path) {

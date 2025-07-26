@@ -261,7 +261,7 @@ export class ImpactCalculatorService {
     projectId: string,
     config: TeamConfiguration
   ): Promise<Array<{ date: Date; impact: ImpactMetrics }>> {
-    const trends = [];
+    const trends: Array<{ date: Date; impact: ImpactMetrics }> = [];
     const daysToCalculate = 30;
 
     for (let i = daysToCalculate; i >= 0; i--) {
@@ -351,7 +351,7 @@ export class ImpactCalculatorService {
     testImpacts: FlakyTestImpactData[],
     totalImpact: ImpactMetrics
   ): string[] {
-    const recommendations = [];
+    const recommendations: string[] = [];
 
     // High-cost test recommendations
     const highCostTests = testImpacts.filter(t => t.impact.estimatedCostImpact > 1000);

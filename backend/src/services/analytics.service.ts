@@ -485,7 +485,7 @@ export class AnalyticsService {
 
     const score = (stability + performance + coverage + maintenance) / 4;
 
-    const recommendations = [];
+    const recommendations: string[] = [];
     if (stability < 80) recommendations.push('Address flaky tests to improve stability');
     if (performance < 80) recommendations.push('Investigate high failure rates');
     if (coverage < 50) recommendations.push('Increase test coverage');
