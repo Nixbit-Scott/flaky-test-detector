@@ -10,6 +10,7 @@ import CreateOrganizationModal from './CreateOrganizationModal';
 import ApiDocumentation from './ApiDocumentation';
 import EnhancedAnalyticsDashboard from './EnhancedAnalyticsDashboard';
 import ReportingSystem from './ReportingSystem';
+import NotificationSystem from './NotificationSystem';
 import Logo from './Logo';
 
 interface Project {
@@ -185,6 +186,7 @@ const Dashboard: React.FC = () => {
                   <span className="font-medium">Organization:</span> {currentOrganization.name}
                 </div>
               )}
+              <NotificationSystem organizationId={currentOrganization?.id} />
               <span className="text-gray-700">
                 Welcome, {user?.name || user?.email}
               </span>
