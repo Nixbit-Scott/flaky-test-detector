@@ -7,6 +7,7 @@ import ProjectDashboard from './ProjectDashboard';
 import ExecutiveDashboard from './ExecutiveDashboard';
 import OrganizationManagement from './OrganizationManagement';
 import CreateOrganizationModal from './CreateOrganizationModal';
+import ApiDocumentation from './ApiDocumentation';
 import Logo from './Logo';
 
 interface Project {
@@ -27,7 +28,7 @@ interface Project {
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const { currentOrganization, organizations } = useOrganization();
-  const [currentView, setCurrentView] = useState<'projects' | 'create' | 'project' | 'executive' | 'organization'>('projects');
+  const [currentView, setCurrentView] = useState<'projects' | 'create' | 'project' | 'executive' | 'organization' | 'api-docs'>('projects');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
@@ -86,6 +87,8 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
         );
+      case 'api-docs':
+        return <ApiDocumentation projectId={selectedProject?.id} />;
       default:
         return (
           <ProjectList
@@ -114,6 +117,19 @@ const Dashboard: React.FC = () => {
                   }`}
                 >
                   Projects
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('API Docs clicked!');
+                    setCurrentView('api-docs');
+                  }}
+                  className={`px-3 py-2 rounded-md text-sm font-medium border-2 border-blue-500 ${
+                    currentView === 'api-docs'
+                      ? 'bg-blue-100 text-blue-700 border-blue-600'
+                      : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                  }`}
+                >
+                  📚 API Documentation
                 </button>
                 <button
                   onClick={() => setCurrentView('organization')}
