@@ -29,6 +29,34 @@ const projects: Map<string, {
   isActive: boolean;
 }> = new Map();
 
+// Pre-seed some demo projects for the demo user
+const initializeDemoProjects = () => {
+  if (!projects.has('project-demo-1')) {
+    const now = new Date().toISOString();
+    projects.set('project-demo-1', {
+      id: 'project-demo-1',
+      name: 'Sample Web App',
+      description: 'A demo web application with test suite',
+      repositoryUrl: 'https://github.com/example/sample-web-app',
+      userId: 'user-demo',
+      createdAt: now,
+      updatedAt: now,
+      isActive: true,
+    });
+    
+    projects.set('project-demo-2', {
+      id: 'project-demo-2',
+      name: 'API Service',
+      description: 'REST API with comprehensive testing',
+      repositoryUrl: 'https://github.com/example/api-service',
+      userId: 'user-demo',
+      createdAt: now,
+      updatedAt: now,
+      isActive: true,
+    });
+  }
+};
+
 // Helper function to verify JWT and get user
 async function getUserFromToken(authHeader: string | undefined) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -47,6 +75,9 @@ async function getUserFromToken(authHeader: string | undefined) {
 }
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+  // Initialize demo projects on each function call
+  initializeDemoProjects();
+  
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
