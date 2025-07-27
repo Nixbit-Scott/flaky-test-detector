@@ -12,11 +12,10 @@ const getAppConfig = () => {
     };
   }
   
-  // In production, if no specific dashboard URL is set, redirect to a different subdomain or service
+  // In production, if no specific dashboard URL is set, redirect to the deployed dashboard
   if (import.meta.env.PROD) {
-    // For now, redirect to the same domain but indicate the app isn't deployed yet
     return {
-      dashboardUrl: `${window.location.origin}/app`,
+      dashboardUrl: 'https://flakytestdetector.netlify.app',
       apiUrl: import.meta.env.VITE_API_URL || '/.netlify/functions',
     };
   }
