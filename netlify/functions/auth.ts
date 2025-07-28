@@ -152,6 +152,15 @@ async function handleRegister(event: HandlerEvent) {
     // Store user
     users.set(validatedData.email, user);
     
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(user.email, user.name);
+      console.log('Welcome email sent to:', user.email);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Don't fail registration if email fails
+    }
+    
     // Generate JWT token
     const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
     const token = jwt.sign(
@@ -376,5 +385,36 @@ async function handleMe(event: HandlerEvent) {
       headers,
       body: JSON.stringify({ error: 'Authentication failed' }),
     };
+  }
+}
+
+// Email integration helper function
+async function sendWelcomeEmail(email: string, name: string) {
+  try {
+    const emailData = {
+      to: email,
+      template: 'welcome',
+      data: { name, email },
+      provider: 'sendgrid' // Default to SendGrid, will fallback if not available
+    };
+
+    const response = await fetch(`${process.env.URL || 'https://flakytestdetector.netlify.app'}/.netlify/functions/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Email service error: ${error}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Welcome email failed:', error);
+    throw error;
   }
 }
