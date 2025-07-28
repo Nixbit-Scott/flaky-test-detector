@@ -2,6 +2,7 @@ import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { z } from 'zod';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
+import { createMonitor } from './monitoring-utils';
 
 // For now, let's use a simple database connection without Prisma
 // We'll create users in a way that works with Netlify Functions
@@ -51,19 +52,22 @@ const initializeDemoUser = async () => {
 };
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  // Initialize demo user on each function call
-  await initializeDemoUser();
+  const monitor = createMonitor('auth');
   
-  // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: '',
-    };
-  }
-
   try {
+    // Initialize demo user on each function call
+    await initializeDemoUser();
+    
+    // Handle CORS preflight
+    if (event.httpMethod === 'OPTIONS') {
+      await monitor.logPerformance();
+      return {
+        statusCode: 200,
+        headers,
+        body: '',
+      };
+    }
+
     console.log('Auth function called:', {
       path: event.path,
       httpMethod: event.httpMethod,
@@ -73,25 +77,34 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     const pathParts = event.path.split('/');
     const path = pathParts[pathParts.length - 1];
     
+    let result;
     // Handle different auth endpoints
     switch (path) {
       case 'register':
-        return await handleRegister(event);
+        result = await handleRegister(event, monitor);
+        break;
       case 'login':
-        return await handleLogin(event);
+        result = await handleLogin(event, monitor);
+        break;
       case 'logout':
-        return await handleLogout(event);
+        result = await handleLogout(event);
+        break;
       case 'me':
-        return await handleMe(event);
+        result = await handleMe(event);
+        break;
       default:
-        return {
+        result = {
           statusCode: 404,
           headers,
           body: JSON.stringify({ error: 'Auth endpoint not found' }),
         };
     }
+    
+    await monitor.logPerformance();
+    return result;
   } catch (error) {
     console.error('Auth function error:', error);
+    await monitor.logError(error instanceof Error ? error : new Error(String(error)));
     return {
       statusCode: 500,
       headers,
@@ -100,7 +113,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
   }
 };
 
-async function handleRegister(event: HandlerEvent) {
+async function handleRegister(event: HandlerEvent, monitor: any) {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -220,7 +233,7 @@ async function handleRegister(event: HandlerEvent) {
   }
 }
 
-async function handleLogin(event: HandlerEvent) {
+async function handleLogin(event: HandlerEvent, monitor: any) {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,

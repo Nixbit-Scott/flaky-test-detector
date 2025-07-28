@@ -104,13 +104,15 @@ class MonitoringClient {
   // Send event to monitoring system
   private async sendEvent(event: MonitoringEvent) {
     try {
-      // In production, send to monitoring endpoint
-      // For now, just console.log for debugging
+      // Log to console for debugging
       console.log('[MONITORING]', JSON.stringify(event, null, 2));
       
-      // Uncomment this in production:
-      /*
-      const response = await fetch('/.netlify/functions/monitor/log', {
+      // Send to monitoring endpoint
+      const monitoringUrl = process.env.URL 
+        ? `${process.env.URL}/.netlify/functions/monitor/log`
+        : '/.netlify/functions/monitor/log';
+        
+      const response = await fetch(monitoringUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,8 +122,9 @@ class MonitoringClient {
       
       if (!response.ok) {
         console.error('Failed to send monitoring event:', await response.text());
+      } else {
+        console.log('[MONITORING] Event sent successfully');
       }
-      */
     } catch (error) {
       console.error('Failed to send monitoring event:', error);
     }
