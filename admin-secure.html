@@ -468,7 +468,7 @@
                 try {
                     console.log('📊 Loading system health...');
                     
-                    const response = await fetch(\`\${this.baseUrl}/.netlify/functions/monitor/health\`);
+                    const response = await fetch(`${this.baseUrl}/.netlify/functions/monitor/health`);
                     
                     if (response.ok) {
                         const health = await response.json();
@@ -490,14 +490,14 @@
                 
                 const healthChecks = document.getElementById('health-checks');
                 if (health.services) {
-                    const servicesHtml = Object.entries(health.services).map(([service, data]) => \`
+                    const servicesHtml = Object.entries(health.services).map(([service, data]) => `
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">\${service}</span>
-                            <span class="text-sm font-medium \${data.status === 'healthy' ? 'text-green-600' : 'text-yellow-600'}">
-                                \${data.status}
+                            <span class="text-sm text-gray-600">${service}</span>
+                            <span class="text-sm font-medium ${data.status === 'healthy' ? 'text-green-600' : 'text-yellow-600'}">
+                                ${data.status}
                             </span>
                         </div>
-                    \`).join('');
+                    `).join('');
                     healthChecks.innerHTML = servicesHtml;
                 }
             }
@@ -513,15 +513,15 @@
                         { time: new Date(Date.now() - 15 * 60000).toLocaleTimeString(), action: 'Health check', details: 'All systems operational' },
                     ];
 
-                    const activityHtml = activities.map(activity => \`
+                    const activityHtml = activities.map(activity => `
                         <div class="flex justify-between items-start">
                             <div>
-                                <div class="text-sm font-medium text-gray-900">\${activity.action}</div>
-                                <div class="text-xs text-gray-500">\${activity.details}</div>
+                                <div class="text-sm font-medium text-gray-900">${activity.action}</div>
+                                <div class="text-xs text-gray-500">${activity.details}</div>
                             </div>
-                            <div class="text-xs text-gray-400">\${activity.time}</div>
+                            <div class="text-xs text-gray-400">${activity.time}</div>
                         </div>
-                    \`).join('');
+                    `).join('');
 
                     document.getElementById('recent-activity').innerHTML = activityHtml;
                 } catch (error) {
@@ -589,19 +589,19 @@
                     { time: new Date(Date.now() - 12 * 60000).toLocaleTimeString(), level: 'INFO', message: 'Authentication function called' },
                 ];
 
-                const logsHtml = logs.map(log => \`
+                const logsHtml = logs.map(log => `
                     <div class="flex justify-between items-center text-xs">
                         <div class="flex items-center space-x-2">
-                            <span class="font-mono px-2 py-1 rounded \${
+                            <span class="font-mono px-2 py-1 rounded ${
                                 log.level === 'SUCCESS' ? 'bg-green-100 text-green-800' :
                                 log.level === 'ERROR' ? 'bg-red-100 text-red-800' :
                                 'bg-blue-100 text-blue-800'
-                            }">\${log.level}</span>
-                            <span class="text-gray-900">\${log.message}</span>
+                            }">${log.level}</span>
+                            <span class="text-gray-900">${log.message}</span>
                         </div>
-                        <span class="text-gray-400">\${log.time}</span>
+                        <span class="text-gray-400">${log.time}</span>
                     </div>
-                \`).join('');
+                `).join('');
 
                 document.getElementById('monitoring-logs').innerHTML = logsHtml;
             }
