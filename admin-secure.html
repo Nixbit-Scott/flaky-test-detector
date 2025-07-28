@@ -602,7 +602,7 @@
                 try {
                     console.log('📊 Loading system health...');
                     
-                    const response = await fetch(`${this.baseUrl}/.netlify/functions/monitor/health`);
+                    const response = await fetch(`${this.baseUrl}/.netlify/functions/monitor-health`);
                     
                     if (response.ok) {
                         const health = await response.json();
