@@ -278,10 +278,15 @@
                 document.getElementById('dashboard').classList.add('hidden');
                 document.getElementById('password-change-screen').classList.add('hidden');
                 
-                // Setup login form
+                // Setup login form with proper event binding
                 const loginForm = document.getElementById('login-form');
-                loginForm.removeEventListener('submit', this.handleLogin); // Remove existing listener
-                loginForm.addEventListener('submit', (e) => {
+                
+                // Remove any existing listeners
+                const newLoginForm = loginForm.cloneNode(true);
+                loginForm.parentNode.replaceChild(newLoginForm, loginForm);
+                
+                // Add event listener to the new form
+                newLoginForm.addEventListener('submit', (e) => {
                     e.preventDefault();
                     this.handleLogin();
                 });
@@ -604,8 +609,22 @@
 
         // Initialize secure dashboard when page loads
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 DOM Content Loaded - Initializing Dashboard');
             window.dashboard = new SecureAdminDashboard();
         });
+
+        // Fallback initialization in case DOMContentLoaded has already fired
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                if (!window.dashboard) {
+                    console.log('🔄 Fallback initialization');
+                    window.dashboard = new SecureAdminDashboard();
+                }
+            });
+        } else {
+            console.log('🔄 Direct initialization');
+            window.dashboard = new SecureAdminDashboard();
+        }
     </script>
 </body>
 </html>
