@@ -22,6 +22,12 @@
   to = "/app/index.html"
   status = 200
 
+# Admin dashboard SPA routing - serve admin app for /admin routes
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200
+
 # Marketing site SPA routing - catch all other routes
 [[redirects]]
   from = "/*"
