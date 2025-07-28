@@ -35,7 +35,7 @@
                         Administrator authentication required
                     </p>
                 </div>
-                <form id="login-form" class="mt-8 space-y-6">
+                <form id="login-form" class="mt-8 space-y-6" onsubmit="return false;">
                     <div class="rounded-md shadow-sm space-y-4">
                         <div>
                             <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
@@ -54,7 +54,7 @@
                     <div id="login-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"></div>
 
                     <div>
-                        <button type="submit" id="login-btn"
+                        <button type="button" id="login-btn"
                                 class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50">
                             Sign In
                         </button>
@@ -74,7 +74,7 @@
                         You must change your default password before accessing the dashboard
                     </p>
                 </div>
-                <form id="password-change-form" class="mt-8 space-y-6">
+                <form id="password-change-form" class="mt-8 space-y-6" onsubmit="return false;">
                     <div class="rounded-md shadow-sm space-y-4">
                         <div>
                             <label for="current-password" class="block text-sm font-medium text-gray-700">Current Password</label>
@@ -100,7 +100,7 @@
                     <div id="password-success" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded"></div>
 
                     <div>
-                        <button type="submit" id="password-change-btn"
+                        <button type="button" id="password-change-btn"
                                 class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50">
                             Change Password
                         </button>
@@ -278,18 +278,19 @@
                 document.getElementById('dashboard').classList.add('hidden');
                 document.getElementById('password-change-screen').classList.add('hidden');
                 
-                // Setup login form with proper event binding
+                // Setup login button click handler
+                const loginBtn = document.getElementById('login-btn');
+                loginBtn.onclick = () => {
+                    this.handleLogin();
+                };
+                
+                // Also handle form submission (double safety)
                 const loginForm = document.getElementById('login-form');
-                
-                // Remove any existing listeners
-                const newLoginForm = loginForm.cloneNode(true);
-                loginForm.parentNode.replaceChild(newLoginForm, loginForm);
-                
-                // Add event listener to the new form
-                newLoginForm.addEventListener('submit', (e) => {
+                loginForm.onsubmit = (e) => {
                     e.preventDefault();
                     this.handleLogin();
-                });
+                    return false;
+                };
             }
 
             showPasswordChange() {
@@ -297,13 +298,19 @@
                 document.getElementById('dashboard').classList.add('hidden');
                 document.getElementById('password-change-screen').classList.remove('hidden');
                 
-                // Setup password change form
+                // Setup password change button click handler
+                const passwordBtn = document.getElementById('password-change-btn');
+                passwordBtn.onclick = () => {
+                    this.handlePasswordChange();
+                };
+                
+                // Also handle form submission (double safety)
                 const passwordForm = document.getElementById('password-change-form');
-                passwordForm.removeEventListener('submit', this.handlePasswordChange); // Remove existing listener
-                passwordForm.addEventListener('submit', (e) => {
+                passwordForm.onsubmit = (e) => {
                     e.preventDefault();
                     this.handlePasswordChange();
-                });
+                    return false;
+                };
             }
 
             showDashboard() {
