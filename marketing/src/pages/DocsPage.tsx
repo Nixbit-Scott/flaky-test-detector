@@ -6,7 +6,6 @@ import {
   Zap, 
   Shield, 
   GitBranch, 
-  CheckCircle,
   Copy,
   ExternalLink,
   ArrowRight,
