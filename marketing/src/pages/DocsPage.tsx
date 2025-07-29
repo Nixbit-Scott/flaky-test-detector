@@ -13,6 +13,7 @@ import {
   Settings,
   Webhook
 } from 'lucide-react'
+import { appConfig } from '../config/app'
 
 const DocsPage: React.FC = () => {
   const [selectedLanguage, setSelectedLanguage] = useState<'curl' | 'javascript' | 'python' | 'go'>('curl')
@@ -270,7 +271,7 @@ func main() {
                 Get API Access
               </Link>
               <a 
-                href="https://app.nixbit.dev/docs" 
+                href={`${appConfig.dashboardUrl}/app`} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="btn-outline inline-flex items-center"
@@ -537,7 +538,7 @@ func main() {
 
           <div className="text-center mt-12">
             <a 
-              href="https://app.nixbit.dev/docs" 
+              href={`${appConfig.dashboardUrl}/app`} 
               target="_blank" 
               rel="noopener noreferrer"
               className="btn-primary inline-flex items-center"
