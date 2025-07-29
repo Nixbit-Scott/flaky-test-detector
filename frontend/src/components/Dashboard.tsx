@@ -11,6 +11,7 @@ import ApiDocumentation from './ApiDocumentation';
 import EnhancedAnalyticsDashboard from './EnhancedAnalyticsDashboard';
 import ReportingSystem from './ReportingSystem';
 import NotificationSystem from './NotificationSystem';
+import Settings from './Settings';
 import Logo from './Logo';
 
 interface Project {
@@ -31,7 +32,7 @@ interface Project {
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const { currentOrganization, organizations } = useOrganization();
-  const [currentView, setCurrentView] = useState<'projects' | 'create' | 'project' | 'executive' | 'organization' | 'api-docs' | 'analytics' | 'reports'>('projects');
+  const [currentView, setCurrentView] = useState<'projects' | 'create' | 'project' | 'executive' | 'organization' | 'api-docs' | 'analytics' | 'reports' | 'settings'>('projects');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
@@ -96,6 +97,8 @@ const Dashboard: React.FC = () => {
         return <EnhancedAnalyticsDashboard organizationId={currentOrganization?.id} />;
       case 'reports':
         return <ReportingSystem organizationId={currentOrganization?.id} />;
+      case 'settings':
+        return <Settings />;
       default:
         return (
           <ProjectList
@@ -190,6 +193,17 @@ const Dashboard: React.FC = () => {
               <span className="text-gray-700">
                 Welcome, {user?.name || user?.email}
               </span>
+              <button
+                onClick={() => setCurrentView('settings')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentView === 'settings'
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                title="Account Settings"
+              >
+                ⚙️
+              </button>
               <button
                 onClick={logout}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"

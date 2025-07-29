@@ -37,16 +37,30 @@ const users: Map<string, {
   createdAt: string;
 }> = new Map();
 
-// Initialize your test account on each cold start
-const initializeTestUser = async () => {
+// Initialize test accounts on each cold start
+const initializeTestAccounts = async () => {
+  const bcrypt = await import('bcryptjs');
+  
+  // Regular user account
   if (!users.has('scott@nixbit.dev')) {
-    const bcrypt = await import('bcryptjs');
     const hashedPassword = await bcrypt.hash('demo1234', 10);
     users.set('scott@nixbit.dev', {
       id: 'user-scott',
       email: 'scott@nixbit.dev',
       name: 'Scott Sanderson',
       password: hashedPassword,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  
+  // Admin account
+  if (!users.has('admin@nixbit.dev')) {
+    const adminPassword = await bcrypt.hash('nixbit2025', 10);
+    users.set('admin@nixbit.dev', {
+      id: 'admin-nixbit',
+      email: 'admin@nixbit.dev',
+      name: 'Nixbit Administrator',
+      password: adminPassword,
       createdAt: new Date().toISOString(),
     });
   }
@@ -57,8 +71,8 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
   const monitor = createMonitor('auth');
   
   try {
-    // Initialize test user on each function call
-    await initializeTestUser();
+    // Initialize test accounts on each function call
+    await initializeTestAccounts();
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
