@@ -204,8 +204,8 @@ const ContactPage: React.FC = () => {
                   <div className="flex items-start space-x-4">
                     <Mail className="h-6 w-6 text-primary-600 mt-1" />
                     <div>
-                      <div className="font-medium text-gray-900">General Inquiries</div>
-                      <div className="text-gray-600">hello@nixbit.dev</div>
+                      <div className="font-medium text-gray-900">Sales Enquiries</div>
+                      <div className="text-gray-600">sales@nixbit.dev</div>
                     </div>
                   </div>
                   
