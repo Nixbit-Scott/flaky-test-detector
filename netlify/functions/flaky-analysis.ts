@@ -9,50 +9,42 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
-// Mock test result data for analysis (in real implementation, this would query the test results)
-const getMockTestHistory = (projectId: string) => {
-  const testHistory = [
-    {
-      testName: 'test_flaky_network_call',
-      results: [
-        { date: '2024-01-15', status: 'failed', duration: 5000 },
-        { date: '2024-01-14', status: 'passed', duration: 300 },
-        { date: '2024-01-13', status: 'failed', duration: 4800 },
-        { date: '2024-01-12', status: 'passed', duration: 250 },
-        { date: '2024-01-11', status: 'failed', duration: 5200 },
-        { date: '2024-01-10', status: 'passed', duration: 280 },
-      ]
-    },
-    {
-      testName: 'test_api_endpoint',
-      results: [
-        { date: '2024-01-15', status: 'failed', duration: 100 },
-        { date: '2024-01-14', status: 'passed', duration: 120 },
-        { date: '2024-01-13', status: 'passed', duration: 110 },
-        { date: '2024-01-12', status: 'passed', duration: 105 },
-        { date: '2024-01-11', status: 'passed', duration: 115 },
-        { date: '2024-01-10', status: 'passed', duration: 125 },
-      ]
-    },
-    {
-      testName: 'test_user_login',
-      results: [
-        { date: '2024-01-15', status: 'passed', duration: 150 },
-        { date: '2024-01-14', status: 'passed', duration: 145 },
-        { date: '2024-01-13', status: 'passed', duration: 155 },
-        { date: '2024-01-12', status: 'passed', duration: 148 },
-        { date: '2024-01-11', status: 'passed', duration: 152 },
-        { date: '2024-01-10', status: 'passed', duration: 147 },
-      ]
-    },
-  ];
+// Get test history from stored test results
+const getTestHistory = (projectId: string, testResults: Map<string, any>) => {
+  // Get all test results for this project
+  const projectResults = Array.from(testResults.values())
+    .filter(result => result.projectId === projectId)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   
-  return testHistory;
+  // Group by test name
+  const testHistory: { [testName: string]: any[] } = {};
+  
+  for (const result of projectResults) {
+    for (const test of result.tests) {
+      if (!testHistory[test.name]) {
+        testHistory[test.name] = [];
+      }
+      testHistory[test.name].push({
+        date: result.timestamp,
+        status: test.status,
+        duration: test.duration || 0,
+        errorMessage: test.errorMessage,
+        stackTrace: test.stackTrace,
+        retryCount: test.retryCount || 0,
+      });
+    }
+  }
+  
+  // Convert to array format expected by analysis
+  return Object.entries(testHistory).map(([testName, results]) => ({
+    testName,
+    results: results.slice(0, 50) // Limit to last 50 runs for analysis
+  }));
 };
 
 // Simple flaky test detection algorithm
 const analyzeFlakyTests = (testHistory: any[]) => {
-  const flakyTests = [];
+  const flakyTests: any[] = [];
   
   for (const test of testHistory) {
     const { testName, results } = test;
@@ -71,7 +63,7 @@ const analyzeFlakyTests = (testHistory: any[]) => {
     
     // Detect flaky patterns
     let isFlaky = false;
-    let flakyReason = [];
+    let flakyReason: string[] = [];
     
     // Pattern 1: Intermittent failures (failure rate between 10% and 90%)
     if (failureRate > 0.1 && failureRate < 0.9) {
@@ -173,8 +165,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       };
     }
 
-    // Get mock test history (in real implementation, this would query the database)
-    const testHistory = getMockTestHistory(projectId);
+    // Get test history from in-memory store
+    // In production, this would query from a proper database
+    const testResults = new Map(); // This would be injected or retrieved from database
+    const testHistory = getTestHistory(projectId, testResults);
     
     // Analyze for flaky tests
     const flakyTests = analyzeFlakyTests(testHistory);

@@ -88,41 +88,35 @@ const webhookEvents: Map<string, {
 }> = new Map();
 
 // Helper function to find project by job name or URL
+// TODO: In production, this should query the database to find the project
+// based on the Jenkins job name, build URL, or configured project mappings
 const findProjectByJobName = (jobName: string, buildUrl?: string): string | null => {
-  // Match based on job name patterns
-  if (jobName.toLowerCase().includes('sample-web-app') || 
-      jobName.toLowerCase().includes('web-app') ||
-      buildUrl?.includes('sample-web-app')) {
-    return 'project-demo-1';
-  }
-  if (jobName.toLowerCase().includes('api-service') || 
-      jobName.toLowerCase().includes('api') ||
-      buildUrl?.includes('api-service')) {
-    return 'project-demo-2';
-  }
+  // In production, implement database lookup:
+  // const project = await db.project.findFirst({
+  //   where: {
+  //     OR: [
+  //       { jenkinsJobName: jobName },
+  //       { jenkinsBuildUrl: { contains: extractJenkinsUrl(buildUrl) } },
+  //       { name: { contains: extractProjectFromJobName(jobName) } }
+  //     ]
+  //   }
+  // });
+  // return project?.id || null;
+  
+  console.log('Project lookup needed for Jenkins job:', jobName, buildUrl);
   return null;
 };
 
 // Helper function to parse Jenkins test results
 const parseJenkinsTestResults = (testResults: any, jobName: string, buildNumber: number, timestamp: string) => {
   if (!testResults || !testResults.suites) {
-    // Generate mock test results based on job name
+    // Generate basic test result structure when no detailed results are available
+    // In production, Jenkins should provide actual test results via plugins
     const mockTests = [
       { 
-        name: 'unit_tests', 
+        name: 'jenkins_build_check', 
         status: 'passed', 
         duration: 1200 
-      },
-      { 
-        name: 'integration_tests', 
-        status: jobName.includes('failed') ? 'failed' : 'passed', 
-        duration: 2500,
-        errorMessage: jobName.includes('failed') ? 'Integration test failed in Jenkins' : undefined
-      },
-      { 
-        name: 'smoke_tests', 
-        status: 'passed', 
-        duration: 800 
       },
     ];
 

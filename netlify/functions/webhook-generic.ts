@@ -82,25 +82,33 @@ const webhookEvents: Map<string, {
 }> = new Map();
 
 // Helper function to find project by various identifiers
+// TODO: In production, this should query the database to find the project
+// based on projectId, project name, repository URL, or other identifiers
 const findProject = (payload: any): string | null => {
   // Try explicit projectId first
   if (payload.projectId) {
     return payload.projectId;
   }
   
-  // Try to match by project name or repository URL
-  const projectName = payload.projectName || payload.project || '';
-  const repositoryUrl = payload.repositoryUrl || payload.repository || '';
+  // In production, implement database lookup:
+  // const projectName = payload.projectName || payload.project || '';
+  // const repositoryUrl = payload.repositoryUrl || payload.repository || '';
+  // 
+  // const project = await db.project.findFirst({
+  //   where: {
+  //     OR: [
+  //       { name: { contains: projectName, mode: 'insensitive' } },
+  //       { repositoryUrl: repositoryUrl },
+  //       { slug: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-') }
+  //     ]
+  //   }
+  // });
+  // return project?.id || null;
   
-  if (projectName.toLowerCase().includes('sample-web-app') || 
-      repositoryUrl.includes('sample-web-app')) {
-    return 'project-demo-1';
-  }
-  
-  if (projectName.toLowerCase().includes('api-service') || 
-      repositoryUrl.includes('api-service')) {
-    return 'project-demo-2';
-  }
+  console.log('Project lookup needed for payload:', {
+    projectName: payload.projectName || payload.project,
+    repositoryUrl: payload.repositoryUrl || payload.repository
+  });
   
   return null;
 };
@@ -130,23 +138,14 @@ const normalizeTestResults = (payload: any) => {
     };
   }
   
-  // Generate mock test results based on build status
+  // Generate basic test result structure when no detailed results are available
+  // In production, CI systems should provide actual test results in the webhook payload
   const mockTests = [
     {
-      name: 'unit_tests',
+      name: 'ci_pipeline_check',
       status: payload.buildStatus === 'success' ? 'passed' : 'failed',
       duration: 1500,
-      errorMessage: payload.buildStatus !== 'success' ? 'Unit tests failed' : undefined,
-    },
-    {
-      name: 'integration_tests',
-      status: 'passed',
-      duration: 2800,
-    },
-    {
-      name: 'linting',
-      status: 'passed',
-      duration: 300,
+      errorMessage: payload.buildStatus !== 'success' ? 'CI pipeline failed' : undefined,
     },
   ];
   

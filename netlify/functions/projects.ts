@@ -29,33 +29,6 @@ const projects: Map<string, {
   isActive: boolean;
 }> = new Map();
 
-// Pre-seed some demo projects for the demo user
-const initializeDemoProjects = () => {
-  if (!projects.has('project-demo-1')) {
-    const now = new Date().toISOString();
-    projects.set('project-demo-1', {
-      id: 'project-demo-1',
-      name: 'Sample Web App',
-      description: 'A demo web application with test suite',
-      repositoryUrl: 'https://github.com/example/sample-web-app',
-      userId: 'user-demo',
-      createdAt: now,
-      updatedAt: now,
-      isActive: true,
-    });
-    
-    projects.set('project-demo-2', {
-      id: 'project-demo-2',
-      name: 'API Service',
-      description: 'REST API with comprehensive testing',
-      repositoryUrl: 'https://github.com/example/api-service',
-      userId: 'user-demo',
-      createdAt: now,
-      updatedAt: now,
-      isActive: true,
-    });
-  }
-};
 
 // Helper function to verify JWT and get user
 async function getUserFromToken(authHeader: string | undefined) {
@@ -75,8 +48,6 @@ async function getUserFromToken(authHeader: string | undefined) {
 }
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  // Initialize demo projects on each function call
-  initializeDemoProjects();
   
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -127,18 +98,18 @@ async function handleGetProjects(event: HandlerEvent, user: { userId: string; em
       .filter(project => project.userId === user.userId)
       .map(project => ({
         ...project,
-        repository: project.repositoryUrl || 'https://github.com/example/repo',
-        branch: 'main', // Default branch
+        repository: project.repositoryUrl || '',
+        branch: 'main',
         retryEnabled: true,
         maxRetries: 3,
         flakyThreshold: 0.2,
         _count: {
-          testRuns: Math.floor(Math.random() * 200),
-          flakyTests: Math.floor(Math.random() * 10),
+          testRuns: 0,
+          flakyTests: 0,
         },
-        testCount: Math.floor(Math.random() * 200), // Mock data
-        flakyTestCount: Math.floor(Math.random() * 10),
-        lastTestRun: new Date().toISOString(),
+        testCount: 0,
+        flakyTestCount: 0,
+        lastTestRun: null,
       }));
 
     return {
@@ -193,8 +164,8 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
     // Add mock stats and match frontend interface
     const projectWithStats = {
       ...project,
-      repository: project.repositoryUrl || 'https://github.com/example/repo',
-      branch: 'main', // Default branch
+      repository: project.repositoryUrl || '',
+      branch: 'main',
       retryEnabled: true,
       maxRetries: 3,
       flakyThreshold: 0.2,
@@ -226,7 +197,7 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
         headers,
         body: JSON.stringify({
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         }),
       };
     }

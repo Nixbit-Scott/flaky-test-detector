@@ -49,72 +49,6 @@ const testResults: Map<string, {
   createdAt: string;
 }> = new Map();
 
-// Pre-seed some demo test results
-const initializeDemoTestResults = () => {
-  if (testResults.size === 0) {
-    const now = new Date().toISOString();
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-    
-    // Sample test results for the demo projects
-    const sampleResults = [
-      {
-        id: 'result-1',
-        projectId: 'project-demo-1',
-        testSuiteName: 'Unit Tests',
-        branch: 'main',
-        commit: 'abc123',
-        buildNumber: '42',
-        timestamp: now,
-        userId: 'user-demo',
-        tests: [
-          { name: 'test_user_login', status: 'passed' as const, duration: 150 },
-          { name: 'test_user_registration', status: 'passed' as const, duration: 200 },
-          { name: 'test_api_endpoint', status: 'failed' as const, duration: 100, errorMessage: 'Connection timeout' },
-          { name: 'test_flaky_network_call', status: 'failed' as const, duration: 5000, errorMessage: 'Network unreliable' },
-        ],
-        createdAt: now,
-      },
-      {
-        id: 'result-2',
-        projectId: 'project-demo-1',
-        testSuiteName: 'Unit Tests',
-        branch: 'main',
-        commit: 'def456',
-        buildNumber: '43',
-        timestamp: yesterday,
-        userId: 'user-demo',
-        tests: [
-          { name: 'test_user_login', status: 'passed' as const, duration: 145 },
-          { name: 'test_user_registration', status: 'passed' as const, duration: 180 },
-          { name: 'test_api_endpoint', status: 'passed' as const, duration: 120 },
-          { name: 'test_flaky_network_call', status: 'passed' as const, duration: 300 },
-        ],
-        createdAt: yesterday,
-      },
-      {
-        id: 'result-3',
-        projectId: 'project-demo-2',
-        testSuiteName: 'Integration Tests',
-        branch: 'main',
-        commit: 'ghi789',
-        buildNumber: '15',
-        timestamp: twoDaysAgo,
-        userId: 'user-demo',
-        tests: [
-          { name: 'test_database_connection', status: 'passed' as const, duration: 500 },
-          { name: 'test_external_api', status: 'failed' as const, duration: 2000, errorMessage: 'Rate limit exceeded' },
-          { name: 'test_cache_performance', status: 'passed' as const, duration: 100 },
-        ],
-        createdAt: twoDaysAgo,
-      },
-    ];
-    
-    sampleResults.forEach(result => {
-      testResults.set(result.id, result);
-    });
-  }
-};
 
 // Helper function to verify JWT and get user
 async function getUserFromToken(authHeader: string | undefined) {
@@ -134,8 +68,6 @@ async function getUserFromToken(authHeader: string | undefined) {
 }
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  // Initialize demo test results on each function call
-  initializeDemoTestResults();
   
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -286,7 +218,7 @@ async function handleSubmitTestResults(event: HandlerEvent) {
         headers,
         body: JSON.stringify({
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         }),
       };
     }

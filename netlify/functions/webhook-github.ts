@@ -69,14 +69,8 @@ const webhookEvents: Map<string, {
 
 // Helper function to find project by repository URL
 const findProjectByRepository = (repositoryUrl: string): string | null => {
-  // In a real implementation, this would query the database
-  // For demo purposes, we'll match our demo projects
-  if (repositoryUrl.includes('sample-web-app')) {
-    return 'project-demo-1';
-  }
-  if (repositoryUrl.includes('api-service')) {
-    return 'project-demo-2';
-  }
+  // In production, this would query the database to find the project by repository URL
+  // For now, return null as no project mapping exists
   return null;
 };
 

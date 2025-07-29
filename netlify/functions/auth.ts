@@ -37,26 +37,11 @@ const users: Map<string, {
   createdAt: string;
 }> = new Map();
 
-// Pre-seed a demo user that's always available
-const initializeDemoUser = async () => {
-  if (!users.has('demo@example.com')) {
-    const hashedPassword = await bcrypt.hash('demo1234', 10);
-    users.set('demo@example.com', {
-      id: 'user-demo',
-      email: 'demo@example.com',
-      name: 'Demo User',
-      password: hashedPassword,
-      createdAt: new Date().toISOString(),
-    });
-  }
-};
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   const monitor = createMonitor('auth');
   
   try {
-    // Initialize demo user on each function call
-    await initializeDemoUser();
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -218,7 +203,7 @@ async function handleRegister(event: HandlerEvent, monitor: any) {
         headers,
         body: JSON.stringify({
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         }),
       };
     }
@@ -302,7 +287,7 @@ async function handleLogin(event: HandlerEvent, monitor: any) {
         headers,
         body: JSON.stringify({
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         }),
       };
     }

@@ -99,13 +99,22 @@ const webhookEvents: Map<string, {
 }> = new Map();
 
 // Helper function to find project by repository URL
+// TODO: In production, this should query the database to find the project
+// based on the repository URL or other identifiers from the webhook payload
 const findProjectByRepository = (repositoryUrl: string): string | null => {
-  if (repositoryUrl.includes('sample-web-app')) {
-    return 'project-demo-1';
-  }
-  if (repositoryUrl.includes('api-service')) {
-    return 'project-demo-2';
-  }
+  // In production, implement database lookup:
+  // const project = await db.project.findFirst({
+  //   where: {
+  //     OR: [
+  //       { repositoryUrl: repositoryUrl },
+  //       { gitlabProjectId: projectId },
+  //       { namespace: namespace }
+  //     ]
+  //   }
+  // });
+  // return project?.id || null;
+  
+  console.log('Project lookup needed for repository:', repositoryUrl);
   return null;
 };
 
@@ -290,7 +299,7 @@ async function handlePipeline(payload: any) {
         headers,
         body: JSON.stringify({
           error: 'Invalid GitLab pipeline payload',
-          details: error.errors,
+          details: error.issues,
         }),
       };
     }
@@ -375,7 +384,7 @@ async function handleJob(payload: any) {
         headers,
         body: JSON.stringify({
           error: 'Invalid GitLab job payload',
-          details: error.errors,
+          details: error.issues,
         }),
       };
     }
