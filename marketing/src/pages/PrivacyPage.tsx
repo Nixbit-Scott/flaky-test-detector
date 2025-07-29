@@ -186,9 +186,12 @@ const PrivacyPage: React.FC = () => {
                   If you have any questions about this Privacy Policy or our privacy practices, please contact us:
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-600 mb-2"><strong>Email:</strong> privacy@nixbit.dev</p>
-                  <p className="text-gray-600 mb-2"><strong>Support:</strong> support@nixbit.dev</p>
-                  <p className="text-gray-600"><strong>Address:</strong> [Your Business Address]</p>
+                  <p className="text-gray-600 mb-2"><strong>Privacy Officer:</strong> privacy@nixbit.dev</p>
+                  <p className="text-gray-600 mb-2"><strong>General Support:</strong> support@nixbit.dev</p>
+                  <p className="text-gray-600">
+                    <strong>Company:</strong> Nixbit operates as a remote-first technology company. 
+                    For official correspondence and privacy-related inquiries, please use the email addresses above.
+                  </p>
                 </div>
               </section>
 

@@ -215,9 +215,15 @@ const TermsPage: React.FC = () => {
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">Governing Law</h2>
                 <p className="text-gray-600 mb-4">
-                  These Terms are governed by and construed in accordance with the laws of [Your Jurisdiction], 
+                  These Terms are governed by and construed in accordance with the laws of the United States, 
                   without regard to its conflict of law provisions. Any disputes arising from these Terms or 
-                  the Service will be subject to the exclusive jurisdiction of the courts in [Your Jurisdiction].
+                  the Service will be resolved through binding arbitration as described below, or in the federal 
+                  and state courts having jurisdiction over the matter.
+                </p>
+                <p className="text-gray-600 mb-4">
+                  <strong>Dispute Resolution:</strong> Any disputes will first be addressed through good faith negotiation. 
+                  If unresolved, disputes may be resolved through binding arbitration in accordance with the rules 
+                  of the American Arbitration Association.
                 </p>
               </section>
 
@@ -236,9 +242,13 @@ const TermsPage: React.FC = () => {
                   If you have any questions about these Terms of Service, please contact us:
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-600 mb-2"><strong>Email:</strong> legal@nixbit.dev</p>
-                  <p className="text-gray-600 mb-2"><strong>Support:</strong> support@nixbit.dev</p>
-                  <p className="text-gray-600"><strong>Address:</strong> [Your Business Address]</p>
+                  <p className="text-gray-600 mb-2"><strong>Legal Inquiries:</strong> legal@nixbit.dev</p>
+                  <p className="text-gray-600 mb-2"><strong>General Support:</strong> support@nixbit.dev</p>
+                  <p className="text-gray-600">
+                    <strong>Company:</strong> Nixbit is a remote-first technology company focused on AI-powered 
+                    test reliability solutions. For all official correspondence, contract matters, and legal 
+                    inquiries, please use the email addresses above.
+                  </p>
                 </div>
               </section>
 
