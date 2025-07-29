@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { auth } from '../middleware/auth';
+import { authMiddleware } from '../middleware/auth';
 import { 
   SubscriptionEnforcementService,
   getOrganizationUsage,
   getPlanDetailsForOrganization
 } from '../middleware/subscription-enforcement';
-import { SUBSCRIPTION_PLANS, getPlanDetails, SubscriptionPlan } from 'shared';
+import { SUBSCRIPTION_PLANS, getPlanDetails, SubscriptionPlan } from '../../../shared/src/types/subscription';
 import { logger } from '../utils/logger';
 
 const router = Router();

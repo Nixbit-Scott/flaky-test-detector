@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import DocsPage from './pages/DocsPage'
+import IntegrationsPage from './pages/IntegrationsPage'
 
 function App() {
   // Initialize UTM tracking on app mount
@@ -32,6 +33,7 @@ function App() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/docs" element={<DocsPage />} />
+        <Route path="/integrations" element={<IntegrationsPage />} />
       </Routes>
     </Layout>
   )

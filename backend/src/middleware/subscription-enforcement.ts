@@ -10,7 +10,7 @@ import {
   getFeatureAccessResult,
   OrganizationUsage,
   PlanLimits
-} from 'shared';
+} from '../../../shared/src/types/subscription';
 
 const prisma = new PrismaClient();
 
