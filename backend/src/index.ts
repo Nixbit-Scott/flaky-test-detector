@@ -31,6 +31,7 @@ import organizationRoutes from './api/organizations';
 import invitationRoutes from './api/invitations';
 import adminRoutes from './api/admin';
 import marketingRoutes from './api/marketing';
+import subscriptionRoutes from './api/subscription';
 
 // Services
 import { NotificationService } from './services/notification.service';
@@ -101,6 +102,7 @@ app.use('/api/webhooks', webhookRateLimitMiddleware, webhookRoutes); // Rate lim
 app.use('/api/analytics', authMiddleware, analyticsRoutes);
 app.use('/api/admin', adminRoutes); // Admin dashboard (includes admin auth middleware internally)
 app.use('/api/marketing', marketingRoutes); // Marketing signup and lead management
+app.use('/api/subscription', subscriptionRoutes); // Subscription and billing management
 
 // Catch-all for unmatched API routes - helpful for debugging
 app.all('/api/*', (req, res) => {

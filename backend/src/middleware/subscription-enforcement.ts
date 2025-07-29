@@ -1,6 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
+import { 
+  SubscriptionPlan, 
+  PlanFeature, 
+  SUBSCRIPTION_PLANS, 
+  getPlanDetails, 
+  hasFeatureAccess,
+  getFeatureAccessResult,
+  OrganizationUsage,
+  PlanLimits
+} from 'shared';
 
 const prisma = new PrismaClient();
 
@@ -11,35 +21,7 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-interface SubscriptionLimits {
-  maxProjects: number;
-  maxMembers: number;
-  maxTeams: number;
-  features: string[];
-}
-
 export class SubscriptionEnforcementService {
-  private static readonly PLAN_LIMITS: Record<string, SubscriptionLimits> = {
-    starter: {
-      maxProjects: 5,
-      maxMembers: 3,
-      maxTeams: 2,
-      features: ['basic_analytics', 'email_notifications'],
-    },
-    team: {
-      maxProjects: 15,
-      maxMembers: 10,
-      maxTeams: 5,
-      features: ['basic_analytics', 'email_notifications', 'advanced_analytics', 'integrations'],
-    },
-    enterprise: {
-      maxProjects: 999,
-      maxMembers: 999,
-      maxTeams: 50,
-      features: ['basic_analytics', 'email_notifications', 'advanced_analytics', 'integrations', 'custom_rules', 'priority_support'],
-    },
-  };
-
   static async getUserOrganization(userId: string): Promise<any> {
     try {
       const membership = await prisma.organizationMember.findFirst({
@@ -61,8 +43,8 @@ export class SubscriptionEnforcementService {
     }
   }
 
-  static getLimitsForPlan(plan: string): SubscriptionLimits {
-    return this.PLAN_LIMITS[plan] || this.PLAN_LIMITS.starter;
+  static getLimitsForPlan(plan: SubscriptionPlan): PlanLimits {
+    return getPlanDetails(plan).limits;
   }
 
   static async checkProjectLimit(organizationId: string): Promise<boolean> {
@@ -80,7 +62,7 @@ export class SubscriptionEnforcementService {
         return false;
       }
 
-      const limits = this.getLimitsForPlan(organization.plan);
+      const limits = this.getLimitsForPlan(organization.plan as SubscriptionPlan);
       const currentProjects = await prisma.project.count({
         where: {
           team: {
@@ -111,7 +93,7 @@ export class SubscriptionEnforcementService {
         return false;
       }
 
-      const limits = this.getLimitsForPlan(organization.plan);
+      const limits = this.getLimitsForPlan(organization.plan as SubscriptionPlan);
       return organization._count.members < limits.maxMembers;
     } catch (error) {
       logger.error('Failed to check member limit', { error, organizationId });
@@ -134,7 +116,7 @@ export class SubscriptionEnforcementService {
         return false;
       }
 
-      const limits = this.getLimitsForPlan(organization.plan);
+      const limits = this.getLimitsForPlan(organization.plan as SubscriptionPlan);
       return organization._count.teams < limits.maxTeams;
     } catch (error) {
       logger.error('Failed to check team limit', { error, organizationId });
@@ -142,7 +124,7 @@ export class SubscriptionEnforcementService {
     }
   }
 
-  static async checkFeatureAccess(organizationId: string, feature: string): Promise<boolean> {
+  static async checkFeatureAccess(organizationId: string, feature: PlanFeature): Promise<boolean> {
     try {
       const organization = await prisma.organization.findUnique({
         where: { id: organizationId },
@@ -152,8 +134,7 @@ export class SubscriptionEnforcementService {
         return false;
       }
 
-      const limits = this.getLimitsForPlan(organization.plan);
-      return limits.features.includes(feature);
+      return hasFeatureAccess(organization.plan as SubscriptionPlan, feature);
     } catch (error) {
       logger.error('Failed to check feature access', { error, organizationId, feature });
       return false;
@@ -272,7 +253,7 @@ export const enforceTeamLimit = async (req: AuthenticatedRequest, res: Response,
 };
 
 // Middleware to enforce feature access
-export const enforceFeatureAccess = (requiredFeature: string) => {
+export const enforceFeatureAccess = (requiredFeature: PlanFeature) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?.userId;
@@ -352,7 +333,7 @@ export const enforceActiveSubscription = async (req: AuthenticatedRequest, res: 
 };
 
 // Helper function to get usage statistics for an organization
-export const getOrganizationUsage = async (organizationId: string) => {
+export const getOrganizationUsage = async (organizationId: string): Promise<OrganizationUsage> => {
   try {
     const organization = await prisma.organization.findUnique({
       where: { id: organizationId },
@@ -378,26 +359,84 @@ export const getOrganizationUsage = async (organizationId: string) => {
       },
     });
 
-    const limits = SubscriptionEnforcementService.getLimitsForPlan(organization.plan);
+    const plan = organization.plan as SubscriptionPlan;
+    const limits = SubscriptionEnforcementService.getLimitsForPlan(plan);
+
+    // Calculate repository count (assuming 1 repo per project for now)
+    const repositoryCount = projectCount;
 
     return {
-      plan: organization.plan,
+      plan,
       limits,
       usage: {
         members: organization._count.members,
         teams: organization._count.teams,
         projects: projectCount,
+        repositories: repositoryCount,
       },
       percentages: {
         members: Math.round((organization._count.members / limits.maxMembers) * 100),
         teams: Math.round((organization._count.teams / limits.maxTeams) * 100),
         projects: Math.round((projectCount / limits.maxProjects) * 100),
+        repositories: Math.round((repositoryCount / limits.maxRepositories) * 100),
       },
-      subscriptionStatus: organization.subscriptionStatus,
+      subscriptionStatus: organization.subscriptionStatus as any,
       isActive: organization.isActive,
+      upgradeAvailable: plan !== 'enterprise',
+      nextPlan: plan === 'starter' ? 'team' : plan === 'team' ? 'enterprise' : undefined,
     };
   } catch (error) {
     logger.error('Failed to get organization usage', { error, organizationId });
+    throw error;
+  }
+};
+
+// Enhanced feature-based access control helpers
+export const checkAnalyticsAccess = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return enforceFeatureAccess('realtime_analytics')(req, res, next);
+};
+
+export const checkAdvancedDetectionAccess = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return enforceFeatureAccess('ai_detection_advanced')(req, res, next);
+};
+
+export const checkQuarantineAccess = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return enforceFeatureAccess('auto_quarantine')(req, res, next);
+};
+
+export const checkIntegrationsAccess = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return enforceFeatureAccess('advanced_integrations')(req, res, next);
+};
+
+export const checkSSLAccess = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return enforceFeatureAccess('sso_saml')(req, res, next);
+};
+
+// API endpoint to get plan details and feature availability
+export const getPlanDetailsForOrganization = async (organizationId: string) => {
+  try {
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+    });
+
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    const plan = organization.plan as SubscriptionPlan;
+    const planDetails = getPlanDetails(plan);
+    const usage = await getOrganizationUsage(organizationId);
+
+    return {
+      currentPlan: planDetails,
+      usage,
+      availableUpgrades: plan !== 'enterprise' ? [
+        plan === 'starter' ? getPlanDetails('team') : getPlanDetails('enterprise')
+      ] : [],
+      featureComparison: Object.values(SUBSCRIPTION_PLANS),
+    };
+  } catch (error) {
+    logger.error('Failed to get plan details for organization', { error, organizationId });
     throw error;
   }
 };

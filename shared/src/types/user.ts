@@ -77,16 +77,7 @@ export interface Invitation {
   acceptedAt?: Date;
 }
 
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  price: number; // in cents
-  interval: 'month' | 'year';
-  maxProjects: number;
-  maxMembers: number;
-  features: string[];
-  isPopular?: boolean;
-}
+// Subscription plan details moved to subscription.ts
 
 export interface ApiKey {
   id: string;
