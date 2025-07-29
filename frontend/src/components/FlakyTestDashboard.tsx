@@ -190,10 +190,10 @@ const FlakyTestDashboard: React.FC<FlakyTestDashboardProps> = ({ projectId }) =>
             </button>
             <span className="text-red-600 text-sm">•</span>
             <button
-              onClick={() => console.log('Project ID:', projectId, 'Token:', token ? 'Present' : 'Missing')}
+              onClick={() => setError('')}
               className="text-red-800 underline hover:text-red-900 text-sm"
             >
-              Debug Info
+              Clear Error
             </button>
           </div>
         </div>
