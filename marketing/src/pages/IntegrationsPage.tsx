@@ -51,7 +51,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'GitHub Actions',
       description: 'Native integration with GitHub workflows for automated flaky test detection',
       icon: '🐙',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'all',
       features: [
         'Automatic webhook configuration',
@@ -67,7 +67,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'GitLab CI',
       description: 'Deep integration with GitLab pipelines and merge request workflows',
       icon: '🦊',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'all',
       features: [
         'Pipeline integration',
@@ -83,7 +83,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Jenkins',
       description: 'Comprehensive Jenkins plugin for flaky test detection and management',
       icon: '🔧',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'all',
       features: [
         'Jenkins plugin installation',
@@ -99,7 +99,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'CircleCI',
       description: 'Streamlined integration with CircleCI orbs and workflows',
       icon: '⭕',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'team',
       features: [
         'CircleCI orb available',
@@ -115,7 +115,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Azure DevOps',
       description: 'Native Azure Pipelines extension for enterprise teams',
       icon: '🔷',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'enterprise',
       features: [
         'Azure DevOps extension',
@@ -182,7 +182,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Discord',
       description: 'Developer-friendly notifications for Discord communities',
       icon: '🎮',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'team',
       features: [
         'Discord webhook support',
@@ -198,7 +198,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Email',
       description: 'Traditional email notifications with smart filtering and digest options',
       icon: '📧',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'all',
       features: [
         'Individual alerts',
@@ -214,7 +214,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'PagerDuty',
       description: 'Critical incident management for high-severity flaky test patterns',
       icon: '🚨',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'enterprise',
       features: [
         'Incident escalation',
@@ -249,7 +249,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Jest',
       description: 'Native support for Jest test results and reporting',
       icon: '🃏',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'all',
       features: [
         'Jest reporter plugin',
@@ -265,7 +265,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Cypress',
       description: 'End-to-end test reliability tracking for Cypress tests',
       icon: '🌲',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'all',
       features: [
         'Cypress plugin',
@@ -281,7 +281,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Playwright',
       description: 'Cross-browser testing reliability with Playwright integration',
       icon: '🎭',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'team',
       features: [
         'Multi-browser analysis',
@@ -297,7 +297,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Selenium',
       description: 'WebDriver test stability analysis and reporting',
       icon: '🕷️',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'team',
       features: [
         'Grid integration',
@@ -313,7 +313,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'PyTest',
       description: 'Python testing framework integration with advanced analytics',
       icon: '🐍',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'all',
       features: [
         'PyTest plugin',
@@ -348,7 +348,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Datadog',
       description: 'Correlate flaky tests with infrastructure metrics and APM data',
       icon: '🐕',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'enterprise',
       features: [
         'Custom metrics export',
@@ -364,7 +364,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'New Relic',
       description: 'Application performance monitoring integration for test reliability',
       icon: '📊',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'enterprise',
       features: [
         'Custom events',
@@ -380,7 +380,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Prometheus',
       description: 'Export test reliability metrics to your Prometheus monitoring stack',
       icon: '🔥',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'team',
       features: [
         'Metrics endpoint',
@@ -396,7 +396,7 @@ const IntegrationsPage: React.FC = () => {
       name: 'Grafana',
       description: 'Beautiful dashboards and visualizations for test reliability data',
       icon: '📈',
-      status: 'available',
+      status: 'coming-soon',
       tier: 'team',
       features: [
         'Pre-built dashboards',
@@ -498,8 +498,8 @@ const IntegrationsPage: React.FC = () => {
         <div className="container-custom">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="text-3xl font-bold text-primary-600 mb-2">25+</div>
-              <div className="text-gray-600">Integrations</div>
+              <div className="text-3xl font-bold text-primary-600 mb-2">3</div>
+              <div className="text-gray-600">Ready Now</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-primary-600 mb-2">&lt;5min</div>
