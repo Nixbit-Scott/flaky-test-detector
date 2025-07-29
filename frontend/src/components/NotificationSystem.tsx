@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, X, AlertTriangle, CheckCircle, Info, 
-  Clock, TrendingUp, Users, GitBranch, Zap 
+  Clock, GitBranch
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 
 interface Notification {
   id: string;
@@ -24,84 +26,48 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ organizationId 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const { token } = useAuth();
 
-  // Simulate real-time notifications
-  useEffect(() => {
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        type: 'alert',
-        title: 'Flaky Test Detected',
-        message: 'test_user_authentication is failing intermittently in the Web App project (3/5 recent runs)',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-        project: 'Web App',
-        actionRequired: true,
-        read: false
-      },
-      {
-        id: '2',
-        type: 'warning',
-        title: 'Test Reliability Declining',
-        message: 'API Service test reliability dropped from 97.2% to 94.9% over the last 24 hours',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
-        project: 'API Service',
-        actionRequired: false,
-        read: false
-      },
-      {
-        id: '3',
-        type: 'success',
-        title: 'Issue Resolved',
-        message: 'The database connection timeout issue in Mobile App has been automatically resolved with retry logic',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-        project: 'Mobile App',
-        actionRequired: false,
-        read: false
-      },
-      {
-        id: '4',
-        type: 'info',
-        title: 'Weekly Report Generated',
-        message: 'Your weekly executive summary report is now available for download',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-        project: undefined,
-        actionRequired: false,
-        read: true
-      },
-      {
-        id: '5',
-        type: 'alert',
-        title: 'Critical Pipeline Failure',
-        message: 'Data Pipeline project has failed 5 consecutive test runs - immediate attention required',
-        timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
-        project: 'Data Pipeline',
-        actionRequired: true,
-        read: true
+  // Fetch real notifications from API
+  const fetchNotifications = async () => {
+    if (!token) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/notifications`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const formattedNotifications = (data.notifications || []).map((n: any) => ({
+          ...n,
+          timestamp: new Date(n.timestamp)
+        }));
+        setNotifications(formattedNotifications);
+        setUnreadCount(formattedNotifications.filter((n: Notification) => !n.read).length);
       }
-    ];
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+      // Start with empty notifications for new users
+      setNotifications([]);
+      setUnreadCount(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setNotifications(mockNotifications);
-    setUnreadCount(mockNotifications.filter(n => !n.read).length);
-
-    // Simulate new notifications coming in
-    const interval = setInterval(() => {
-      const newNotification: Notification = {
-        id: Date.now().toString(),
-        type: Math.random() > 0.7 ? 'alert' : Math.random() > 0.5 ? 'warning' : 'info',
-        title: 'New Test Result',
-        message: `Latest test run completed with ${Math.floor(Math.random() * 10)} flaky tests detected`,
-        timestamp: new Date(),
-        project: ['Web App', 'API Service', 'Mobile App'][Math.floor(Math.random() * 3)],
-        actionRequired: Math.random() > 0.7,
-        read: false
-      };
-
-      setNotifications(prev => [newNotification, ...prev.slice(0, 9)]); // Keep only 10 most recent
-      setUnreadCount(prev => prev + 1);
-    }, 30000); // New notification every 30 seconds
-
+  useEffect(() => {
+    fetchNotifications();
+    
+    // Refresh notifications every 60 seconds
+    const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [token]);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -123,18 +89,50 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ organizationId 
     }
   };
 
-  const handleMarkAsRead = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(n => 
-        n.id === notificationId ? { ...n, read: true } : n
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+  const handleMarkAsRead = async (notificationId: string) => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications?notificationId=${notificationId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        setNotifications(prev => 
+          prev.map(n => 
+            n.id === notificationId ? { ...n, read: true } : n
+          )
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
+  const handleMarkAllAsRead = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications?markAll=true`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
   };
 
   const handleDismiss = (notificationId: string) => {
