@@ -210,6 +210,84 @@
                     </div>
                 </div>
 
+                <!-- User Management Section -->
+                <div class="bg-white rounded-lg shadow mb-8">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-900">User Management</h3>
+                                <p class="text-sm text-gray-600">View and manage application users</p>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-500">Active Users:</span>
+                                    <span id="active-users-count" class="text-sm font-medium text-green-600">-</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-500">New This Week:</span>
+                                    <span id="new-users-week" class="text-sm font-medium text-blue-600">-</span>
+                                </div>
+                                <button onclick="refreshUsers()" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Search and Filter Bar -->
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex-1">
+                                <input
+                                    type="text"
+                                    id="user-search"
+                                    placeholder="Search users by email, name, or ID..."
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                                    onkeyup="handleUserSearch(event)"
+                                >
+                            </div>
+                            <select id="user-sort" onchange="sortUsers()" class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm">
+                                <option value="createdAt-desc">Newest First</option>
+                                <option value="createdAt-asc">Oldest First</option>
+                                <option value="email-asc">Email A-Z</option>
+                                <option value="email-desc">Email Z-A</option>
+                                <option value="lastLogin-desc">Last Login</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        Loading users...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Users Table Footer -->
+                    <div class="px-6 py-3 border-t border-gray-200 bg-gray-50">
+                        <div class="flex items-center justify-between text-sm text-gray-600">
+                            <span id="users-count-display">Showing 0 users</span>
+                            <span id="users-last-updated">Last updated: -</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Monitoring Data -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Email System Status -->
@@ -474,7 +552,8 @@
                     this.loadSystemHealth(),
                     this.loadRecentActivity(),
                     this.loadMonitoringData(),
-                    this.loadNetlifyMetrics()
+                    this.loadNetlifyMetrics(),
+                    this.loadUsers()
                 ]);
             }
 
@@ -770,6 +849,176 @@
 
                 document.getElementById('monitoring-logs').innerHTML = logsHtml;
             }
+
+            // User Management Methods
+            async loadUsers(searchQuery = '', sortBy = 'createdAt', sortOrder = 'desc') {
+                try {
+                    console.log('📥 Loading users data...');
+                    
+                    const params = new URLSearchParams({
+                        search: searchQuery,
+                        sortBy: sortBy,
+                        sortOrder: sortOrder
+                    });
+                    
+                    const response = await fetch(`${this.baseUrl}/.netlify/functions/admin-users?${params}`, {
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.displayUsers(data);
+                        this.updateUserStats(data.summary);
+                    } else {
+                        throw new Error('Failed to load users');
+                    }
+                } catch (error) {
+                    console.error('❌ Users loading error:', error);
+                    this.displayUsersError('Failed to load users. Please check your connection and try again.');
+                }
+            }
+
+            displayUsers(data) {
+                const tbody = document.getElementById('users-table-body');
+                const { users, summary, query } = data;
+                
+                if (users.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                                ${query.search ? 'No users found matching your search.' : 'No users found.'}
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                const usersHtml = users.map(user => {
+                    const createdDate = new Date(user.createdAt).toLocaleDateString();
+                    const lastLoginDate = new Date(user.lastLogin).toLocaleDateString();
+                    const daysSinceLogin = Math.floor((Date.now() - new Date(user.lastLogin).getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    return `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-${user.role === 'admin' ? 'purple' : 'blue'}-100 flex items-center justify-center">
+                                        <span class="text-${user.role === 'admin' ? 'purple' : 'blue'}-600 font-medium text-sm">
+                                            ${user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">${user.name}</div>
+                                        <div class="text-sm text-gray-500">${user.email}</div>
+                                        <div class="text-xs text-gray-400 font-mono">${user.id}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                                }">
+                                    ${user.role === 'admin' ? '👑 Admin' : '👤 User'}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <div>${createdDate}</div>
+                                <div class="text-xs text-gray-500">${this.getTimeAgo(user.createdAt)}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <div>${lastLoginDate}</div>
+                                <div class="text-xs ${daysSinceLogin <= 1 ? 'text-green-600' : daysSinceLogin <= 7 ? 'text-yellow-600' : 'text-red-500'}">
+                                    ${daysSinceLogin === 0 ? 'Today' : daysSinceLogin === 1 ? 'Yesterday' : `${daysSinceLogin} days ago`}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <div class="space-y-1">
+                                    <div>📂 ${user.projectsCreated} projects</div>
+                                    <div>📊 ${user.testResultsSubmitted} results</div>
+                                    <div>🔄 ${user.totalSessions} sessions</div>
+                                    <div class="text-xs text-gray-500">~${user.avgSessionDuration}min avg</div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                }">
+                                    ${user.status === 'active' ? '✅ Active' : '⏸️ Inactive'}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                tbody.innerHTML = usersHtml;
+                
+                // Update footer
+                document.getElementById('users-count-display').textContent = 
+                    `Showing ${users.length} of ${summary.totalUsers} users${query.search ? ` (filtered)` : ''}`;
+                document.getElementById('users-last-updated').textContent = 
+                    `Last updated: ${new Date().toLocaleTimeString()}`;
+            }
+
+            displayUsersError(message) {
+                const tbody = document.getElementById('users-table-body');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center">
+                            <div class="text-red-600 mb-2">❌ ${message}</div>
+                            <button onclick="window.dashboard.loadUsers()" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                Try Again
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            updateUserStats(summary) {
+                // Update the main stats
+                document.getElementById('total-users').textContent = summary.totalUsers.toString();
+                document.getElementById('active-users-count').textContent = summary.activeUsers.toString();
+                document.getElementById('new-users-week').textContent = summary.newUsersThisWeek.toString();
+            }
+
+            getTimeAgo(dateString) {
+                const now = new Date();
+                const date = new Date(dateString);
+                const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+                
+                if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+                if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+                const days = Math.floor(diffInMinutes / 1440);
+                if (days < 30) return `${days}d ago`;
+                const months = Math.floor(days / 30);
+                if (months < 12) return `${months}mo ago`;
+                return `${Math.floor(months / 12)}y ago`;
+            }
+        }
+
+        // Global functions for user management
+        function refreshUsers() {
+            if (window.dashboard) {
+                const searchQuery = document.getElementById('user-search').value;
+                const sortSelect = document.getElementById('user-sort');
+                const [sortBy, sortOrder] = sortSelect.value.split('-');
+                window.dashboard.loadUsers(searchQuery, sortBy, sortOrder);
+            }
+        }
+
+        function handleUserSearch(event) {
+            if (event.key === 'Enter' || event.type === 'search') {
+                refreshUsers();
+            }
+            // Also trigger search after user stops typing (debounced)
+            clearTimeout(window.searchTimeout);
+            window.searchTimeout = setTimeout(refreshUsers, 500);
+        }
+
+        function sortUsers() {
+            refreshUsers();
         }
 
         // Global logout function
