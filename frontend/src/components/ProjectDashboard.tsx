@@ -6,7 +6,6 @@ import EnhancedFlakyTestDashboard from './EnhancedFlakyTestDashboard';
 import RetryConfiguration from './RetryConfiguration';
 import QuarantineManagement from './QuarantineManagement';
 import IntegrationManagement from './IntegrationManagement';
-import ApiDocumentation from './ApiDocumentation';
 
 interface Project {
   id: string;
@@ -30,7 +29,7 @@ interface ProjectDashboardProps {
 }
 
 const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ project, onBack, onProjectUpdate }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'results' | 'flaky-tests' | 'ai-flaky-tests' | 'quarantine' | 'retry-config' | 'integrations' | 'webhooks' | 'api-docs' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'results' | 'flaky-tests' | 'ai-flaky-tests' | 'quarantine' | 'retry-config' | 'integrations' | 'webhooks' | 'settings'>('overview');
   const [currentProject, setCurrentProject] = useState<Project>(project);
 
   const handleProjectUpdate = (updatedProject: Project) => {
@@ -56,8 +55,6 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ project, onBack, on
         return <IntegrationManagement projectId={project.id} />;
       case 'webhooks':
         return <WebhookConfig projectId={project.id} />;
-      case 'api-docs':
-        return <ApiDocumentation projectId={project.id} />;
       case 'settings':
         return (
           <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -358,7 +355,6 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ project, onBack, on
             { key: 'retry-config', label: 'Retry Logic', icon: '🔄' },
             { key: 'integrations', label: 'Integrations', icon: '📱' },
             { key: 'webhooks', label: 'CI/CD Setup', icon: '🔗' },
-            { key: 'api-docs', label: 'API Docs', icon: '📚' },
             { key: 'settings', label: 'Settings', icon: '⚙️' },
           ].map((tab) => (
             <button
