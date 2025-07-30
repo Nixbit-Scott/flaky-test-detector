@@ -2,10 +2,14 @@ import { Router, Request, Response } from 'express';
 import { WebhookParserService } from '../services/webhook-parser.service';
 import { TestResultService } from '../services/test-result.service';
 import { GitHubPRAnalysisService } from '../services/github-pr-analysis.service';
+import { GitHubStatusChecksService } from '../services/github-status-checks.service';
+import { GitHubArtifactsService } from '../services/github-artifacts.service';
 import { logger } from '../utils/logger';
 
 const router = Router();
 const githubPRService = new GitHubPRAnalysisService();
+const githubStatusService = new GitHubStatusChecksService();
+const githubArtifactsService = new GitHubArtifactsService();
 
 // Generic webhook handler
 const handleWebhook = async (req: Request, res: Response, source: string): Promise<void> => {

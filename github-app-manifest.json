@@ -1,0 +1,36 @@
+{
+  "name": "Flaky Test Detector",
+  "description": "AI-powered detection and intelligent retry logic for flaky tests in your CI/CD pipeline. Automatically identifies intermittent test failures and provides smart retry strategies to improve build reliability.",
+  "url": "https://flakytest.dev",
+  "hook_attributes": {
+    "url": "https://api.flakytest.dev/api/webhooks/github"
+  },
+  "redirect_url": "https://flakytest.dev/auth/github/callback",
+  "callback_urls": [
+    "https://flakytest.dev/auth/github/callback",
+    "https://app.flakytest.dev/auth/github/callback"
+  ],
+  "request_oauth_on_install": true,
+  "setup_url": "https://flakytest.dev/setup",
+  "setup_on_update": true,
+  "public": true,
+  "default_events": [
+    "check_run",
+    "check_suite", 
+    "pull_request",
+    "workflow_run",
+    "push",
+    "installation",
+    "installation_repositories"
+  ],
+  "default_permissions": {
+    "actions": "read",
+    "checks": "write",
+    "contents": "read",
+    "issues": "write",
+    "metadata": "read",
+    "pull_requests": "write",
+    "repository_hooks": "read",
+    "statuses": "write"
+  }
+}
