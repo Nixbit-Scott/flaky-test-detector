@@ -455,6 +455,7 @@
                 this.authToken = localStorage.getItem('nixbit_admin_token');
                 this.adminPassword = localStorage.getItem('nixbit_admin_password') || 'nixbit2025'; // Default password
                 this.charts = {};
+                this.marketingLoading = false; // Prevent multiple simultaneous marketing analytics calls
                 this.init();
             }
 
@@ -521,6 +522,8 @@
                     this.loadSystemHealth();
                     this.loadRecentActivity();
                     this.loadNetlifyMetrics();
+                    // Don't auto-refresh marketing analytics to avoid chart conflicts
+                    // Users can manually refresh marketing data with the refresh button
                 }, 30000);
             }
 
@@ -784,9 +787,9 @@
                     });
                 }
 
-                // Marketing Trends Chart (Line)
+                // Marketing Trends Chart (Line) - only create if not already exists
                 const marketingTrendsCtx = document.getElementById('marketingTrendsChart');
-                if (marketingTrendsCtx) {
+                if (marketingTrendsCtx && !this.charts.marketingTrends) {
                     this.charts.marketingTrends = new Chart(marketingTrendsCtx, {
                         type: 'line',
                         data: {
@@ -818,9 +821,9 @@
                     });
                 }
 
-                // Marketing Sources Chart (Doughnut)
+                // Marketing Sources Chart (Doughnut) - only create if not already exists
                 const marketingSourcesCtx = document.getElementById('marketingSourcesChart');
-                if (marketingSourcesCtx) {
+                if (marketingSourcesCtx && !this.charts.marketingSources) {
                     this.charts.marketingSources = new Chart(marketingSourcesCtx, {
                         type: 'doughnut',
                         data: {
@@ -1175,6 +1178,14 @@
 
             // Marketing Analytics Methods
             async loadMarketingAnalytics() {
+                // Prevent multiple simultaneous calls
+                if (this.marketingLoading) {
+                    console.log('📈 Marketing analytics already loading, skipping...');
+                    return;
+                }
+                
+                this.marketingLoading = true;
+                
                 try {
                     console.log('📈 Loading marketing analytics...');
                     
@@ -1187,19 +1198,29 @@
 
                     if (response.ok) {
                         const data = await response.json();
-                        if (data.success) {
-                            this.updateMarketingMetrics(data.data.summary);
-                            this.updateMarketingCharts(data.data.trends, data.data.sources);
-                            this.updateRecentSignups(data.data.recentSignups);
+                        if (data.success && data.data) {
+                            // Add safety checks for data structure
+                            if (data.data.summary) {
+                                this.updateMarketingMetrics(data.data.summary);
+                            }
+                            if (data.data.trends || data.data.sources) {
+                                this.updateMarketingCharts(data.data.trends, data.data.sources);
+                            }
+                            if (data.data.recentSignups) {
+                                this.updateRecentSignups(data.data.recentSignups);
+                            }
                         } else {
-                            throw new Error(data.message || 'Failed to load marketing analytics');
+                            throw new Error(data.message || 'Invalid response data structure');
                         }
                     } else {
-                        throw new Error('Failed to fetch marketing analytics');
+                        const errorText = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${errorText}`);
                     }
                 } catch (error) {
                     console.error('❌ Marketing analytics loading error:', error);
                     this.showMarketingError(error.message);
+                } finally {
+                    this.marketingLoading = false;
                 }
             }
 
@@ -1230,55 +1251,90 @@
             }
 
             updateMarketingCharts(trends, sources) {
-                // Update trends chart
-                if (this.charts.marketingTrends && trends.daily) {
-                    this.charts.marketingTrends.data.labels = trends.daily.map(d => 
-                        new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                    );
-                    this.charts.marketingTrends.data.datasets[0].data = trends.daily.map(d => d.count);
-                    this.charts.marketingTrends.update();
-                }
+                try {
+                    // Update trends chart with safety checks
+                    if (this.charts.marketingTrends && trends && trends.daily && Array.isArray(trends.daily)) {
+                        const chart = this.charts.marketingTrends;
+                        
+                        // Clear existing data first
+                        chart.data.labels = [];
+                        chart.data.datasets[0].data = [];
+                        
+                        // Add new data
+                        chart.data.labels = trends.daily.map(d => 
+                            new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        );
+                        chart.data.datasets[0].data = trends.daily.map(d => d.count || 0);
+                        
+                        // Update with animation disabled to prevent conflicts
+                        chart.update('none');
+                    }
 
-                // Update sources chart
-                if (this.charts.marketingSources && sources) {
-                    const sourceEntries = Object.entries(sources);
-                    this.charts.marketingSources.data.labels = sourceEntries.map(([source, _]) => 
-                        source === 'unknown' ? 'Direct' : source.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                    );
-                    this.charts.marketingSources.data.datasets[0].data = sourceEntries.map(([_, count]) => count);
-                    this.charts.marketingSources.update();
+                    // Update sources chart with safety checks
+                    if (this.charts.marketingSources && sources && typeof sources === 'object') {
+                        const sourceEntries = Object.entries(sources);
+                        const chart = this.charts.marketingSources;
+                        
+                        if (sourceEntries.length > 0) {
+                            // Clear existing data first
+                            chart.data.labels = [];
+                            chart.data.datasets[0].data = [];
+                            
+                            // Add new data
+                            chart.data.labels = sourceEntries.map(([source, _]) => 
+                                source === 'unknown' ? 'Direct' : source.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                            );
+                            chart.data.datasets[0].data = sourceEntries.map(([_, count]) => count || 0);
+                            
+                            // Update with animation disabled to prevent conflicts
+                            chart.update('none');
 
-                    // Update custom legend
-                    this.updateSourcesLegend(sourceEntries);
+                            // Update custom legend
+                            this.updateSourcesLegend(sourceEntries);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Chart update error:', error);
+                    // Don't let chart errors break the entire dashboard
                 }
             }
 
             updateSourcesLegend(sourceEntries) {
                 const legendEl = document.getElementById('marketing-sources-legend');
-                if (!legendEl) return;
+                if (!legendEl || !Array.isArray(sourceEntries)) return;
 
-                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16'];
-                
-                const legendHtml = sourceEntries.map(([source, count], index) => {
-                    const displayName = source === 'unknown' ? 'Direct' : source.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    const color = colors[index % colors.length];
-                    const percentage = sourceEntries.length > 0 ? ((count / sourceEntries.reduce((sum, [_, c]) => sum + c, 0)) * 100).toFixed(1) : 0;
+                try {
+                    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16'];
+                    const totalCount = sourceEntries.reduce((sum, [_, c]) => sum + (c || 0), 0);
                     
-                    return `
-                        <div class="flex items-center justify-between text-sm">
-                            <div class="flex items-center">
-                                <div class="w-3 h-3 rounded-full mr-2" style="background-color: ${color}"></div>
-                                <span class="text-gray-600">${displayName}</span>
+                    const legendHtml = sourceEntries.map(([source, count], index) => {
+                        const displayName = source === 'unknown' ? 'Direct' : source.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        const color = colors[index % colors.length];
+                        const percentage = totalCount > 0 ? ((count / totalCount) * 100).toFixed(1) : 0;
+                        
+                        return `
+                            <div class="flex items-center justify-between text-sm">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 rounded-full mr-2" style="background-color: ${color}"></div>
+                                    <span class="text-gray-600">${displayName}</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-gray-900 font-medium">${count || 0}</span>
+                                    <span class="text-gray-500">(${percentage}%)</span>
+                                </div>
                             </div>
-                            <div class="flex items-center space-x-2">
-                                <span class="text-gray-900 font-medium">${count}</span>
-                                <span class="text-gray-500">(${percentage}%)</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                        `;
+                    }).join('');
 
-                legendEl.innerHTML = legendHtml;
+                    // Use requestAnimationFrame to prevent layout thrashing
+                    requestAnimationFrame(() => {
+                        legendEl.innerHTML = legendHtml;
+                    });
+                } catch (error) {
+                    console.error('❌ Legend update error:', error);
+                    // Fallback to empty legend on error
+                    legendEl.innerHTML = '<div class="text-sm text-gray-500">Unable to load sources</div>';
+                }
             }
 
             updateRecentSignups(recentSignups) {
