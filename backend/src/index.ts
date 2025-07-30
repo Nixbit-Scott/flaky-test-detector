@@ -38,6 +38,7 @@ import subscriptionRoutes from './api/subscription';
 // Services
 import { NotificationService } from './services/notification.service';
 import { webSocketService } from './services/websocket.service';
+import { QuarantineSchedulerService } from './services/quarantine-scheduler.service';
 
 dotenv.config();
 
@@ -153,6 +154,9 @@ server.listen(PORT, () => {
   });
   
   logger.info('📅 Notification scheduling initialized');
+  
+  // Initialize quarantine automation scheduling
+  await QuarantineSchedulerService.initializeScheduling();
 });
 
 server.on('error', (error) => {

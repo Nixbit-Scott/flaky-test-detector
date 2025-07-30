@@ -6,6 +6,8 @@ import {
   Mail, Slack, Webhook, Settings, Play, Pause,
   BarChart3, FileSpreadsheet, FileImage, FileCode
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 
 interface ReportingSystemProps {
   organizationId?: string;
@@ -32,86 +34,160 @@ interface NotificationChannel {
 }
 
 const ReportingSystem: React.FC<ReportingSystemProps> = ({ organizationId }) => {
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState<'reports' | 'notifications' | 'templates' | 'settings'>('reports');
   const [reports, setReports] = useState<Report[]>([]);
   const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>([]);
   const [isGeneratingReport, setIsGeneratingReport] = useState<string | null>(null);
   const [showCreateReport, setShowCreateReport] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data initialization
+  // Load reporting data
   useEffect(() => {
-    const mockReports: Report[] = [
-      {
-        id: '1',
-        name: 'Weekly Executive Summary',
-        type: 'executive',
-        frequency: 'weekly',
-        recipients: ['ceo@company.com', 'cto@company.com'],
-        lastGenerated: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        status: 'active',
-        format: 'pdf',
-        description: 'High-level overview of test reliability metrics and trends'
-      },
-      {
-        id: '2',
-        name: 'Daily Team Standup Report',
-        type: 'team',
-        frequency: 'daily',
-        recipients: ['dev-team@company.com'],
-        lastGenerated: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        status: 'active',
-        format: 'html',
-        description: 'Quick overview of overnight test failures and flaky test alerts'
-      },
-      {
-        id: '3',
-        name: 'Monthly Compliance Report',
-        type: 'compliance',
-        frequency: 'monthly',
-        recipients: ['compliance@company.com', 'audit@company.com'],
-        lastGenerated: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        status: 'active',
-        format: 'pdf',
-        description: 'Detailed compliance metrics and test coverage reports'
-      },
-      {
-        id: '4',
-        name: 'Technical Deep Dive',
-        type: 'technical',
-        frequency: 'weekly',
-        recipients: ['devops@company.com', 'qa@company.com'],
-        lastGenerated: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        status: 'paused',
-        format: 'json',
-        description: 'Comprehensive technical analysis with raw data and metrics'
+    const loadReportingData = async () => {
+      if (!token || !organizationId) {
+        // Set default reports when no organization is selected
+        setReports(getDefaultReports());
+        setNotificationChannels(getDefaultChannels());
+        setLoading(false);
+        return;
       }
-    ];
 
-    const mockChannels: NotificationChannel[] = [
-      { id: '1', type: 'email', name: 'Email Notifications', configured: true, enabled: true },
-      { id: '2', type: 'slack', name: 'Slack #alerts', configured: true, enabled: true },
-      { id: '3', type: 'webhook', name: 'Custom Webhook', configured: false, enabled: false },
-      { id: '4', type: 'teams', name: 'Microsoft Teams', configured: false, enabled: false }
-    ];
+      try {
+        setLoading(true);
+        setError(null);
 
-    setReports(mockReports);
-    setNotificationChannels(mockChannels);
-  }, []);
+        // In a full implementation, you'd have dedicated reporting APIs
+        // For now, we'll create sensible defaults based on available data
+        const defaultReports = getDefaultReports();
+        const defaultChannels = getDefaultChannels();
+
+        setReports(defaultReports);
+        setNotificationChannels(defaultChannels);
+
+      } catch (error) {
+        console.error('Error loading reporting data:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load reporting data');
+        setReports([]);
+        setNotificationChannels([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadReportingData();
+  }, [token, organizationId]);
+
+  const getDefaultReports = (): Report[] => [
+    {
+      id: '1',
+      name: 'Weekly Executive Summary',
+      type: 'executive',
+      frequency: 'weekly',
+      recipients: ['leadership@company.com'],
+      lastGenerated: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      status: 'active',
+      format: 'pdf',
+      description: 'High-level overview of test reliability metrics and trends'
+    },
+    {
+      id: '2',
+      name: 'Daily Team Report',
+      type: 'team',
+      frequency: 'daily',
+      recipients: ['dev-team@company.com'],
+      lastGenerated: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      status: 'active',
+      format: 'html',
+      description: 'Daily overview of test failures and flaky test alerts'
+    },
+    {
+      id: '3',
+      name: 'Monthly Technical Report',
+      type: 'technical',
+      frequency: 'monthly',
+      recipients: ['engineering@company.com'],
+      lastGenerated: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      status: 'active',
+      format: 'pdf',
+      description: 'Detailed technical analysis and recommendations'
+    }
+  ];
+
+  const getDefaultChannels = (): NotificationChannel[] => [
+    { id: '1', type: 'email', name: 'Email Notifications', configured: true, enabled: true },
+    { id: '2', type: 'slack', name: 'Slack Integration', configured: false, enabled: false },
+    { id: '3', type: 'webhook', name: 'Custom Webhook', configured: false, enabled: false },
+    { id: '4', type: 'teams', name: 'Microsoft Teams', configured: false, enabled: false }
+  ];
 
   const handleGenerateReport = async (reportId: string) => {
+    if (!organizationId || !token) {
+      alert('Please select an organization first');
+      return;
+    }
+
     setIsGeneratingReport(reportId);
     
-    // Simulate report generation
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Update last generated time
-    setReports(prev => prev.map(report => 
-      report.id === reportId 
-        ? { ...report, lastGenerated: new Date() }
-        : report
-    ));
-    
-    setIsGeneratingReport(null);
+    try {
+      const report = reports.find(r => r.id === reportId);
+      if (!report) return;
+
+      // Generate report using executive dashboard API
+      let apiEndpoint = '';
+      switch (report.type) {
+        case 'executive':
+          apiEndpoint = `/executive-dashboard/${organizationId}/summary?period=weekly`;
+          break;
+        case 'team':
+          apiEndpoint = `/executive-dashboard/${organizationId}/teams?period=daily`;
+          break;
+        case 'technical':
+          apiEndpoint = `/executive-dashboard/${organizationId}/projects?period=monthly`;
+          break;
+        default:
+          apiEndpoint = `/analytics/dashboard`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate report');
+      }
+
+      const data = await response.json();
+      
+      // Export the data based on format
+      if (report.format === 'json') {
+        const dataStr = JSON.stringify(data, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const exportFileDefaultName = `${report.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+        
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+      }
+      
+      // Update last generated time
+      setReports(prev => prev.map(report => 
+        report.id === reportId 
+          ? { ...report, lastGenerated: new Date() }
+          : report
+      ));
+
+    } catch (error) {
+      console.error('Error generating report:', error);
+      alert('Failed to generate report. Please try again.');
+    } finally {
+      setIsGeneratingReport(null);
+    }
   };
 
   const handleToggleReportStatus = (reportId: string) => {
@@ -429,6 +505,39 @@ const ReportingSystem: React.FC<ReportingSystemProps> = ({ organizationId }) => 
       </div>
     </div>
   );
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading reporting configuration...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="flex items-center">
+          <AlertTriangle className="h-5 w-5 text-red-400 mr-3" />
+          <div>
+            <h3 className="text-sm font-medium text-red-800">Failed to load reporting system</h3>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-md text-sm font-medium"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

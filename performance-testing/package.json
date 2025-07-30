@@ -1,0 +1,22 @@
+{
+  "name": "nixbit-performance-testing",
+  "version": "1.0.0",
+  "description": "Performance testing suite for Nixbit application",
+  "type": "module",
+  "scripts": {
+    "test:load": "k6 run load-test.js",
+    "test:spike": "k6 run --vus 200 --duration 30s load-test.js",
+    "test:soak": "k6 run --vus 50 --duration 30m load-test.js",
+    "test:stress": "k6 run stress-test.js",
+    "benchmark": "node benchmark.js",
+    "monitor": "node monitor.js",
+    "analyze": "node analyze-results.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "clinic": "^13.0.0",
+    "autocannon": "^7.15.0",
+    "0x": "^5.5.0"
+  },
+  "devDependencies": {}
+}

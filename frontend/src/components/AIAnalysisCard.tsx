@@ -127,7 +127,9 @@ const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
           <div className="flex items-center space-x-3">
             <span className="text-2xl">{getCategoryIcon(analysis.primaryCategory)}</span>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">AI Root Cause Analysis</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {analysis.enhanced ? '🧠 Enhanced AI Analysis' : 'AI Root Cause Analysis'}
+              </h3>
               <p className="text-sm text-gray-500">for {testName}</p>
             </div>
           </div>
@@ -135,6 +137,18 @@ const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getConfidenceColor(analysis.confidence)}`}>
               {(analysis.confidence * 100).toFixed(0)}% confidence
             </span>
+            {analysis.enhanced && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                ML Enhanced
+              </span>
+            )}
+            {analysis.historicalPattern?.recentTrend && analysis.historicalPattern.recentTrend !== 'stable' && (
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                analysis.historicalPattern.recentTrend === 'worsening' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+              }`}>
+                {analysis.historicalPattern.recentTrend === 'worsening' ? '📈 Worsening' : '📉 Improving'}
+              </span>
+            )}
             {onTriggerNewAnalysis && (
               <button
                 onClick={onTriggerNewAnalysis}
@@ -183,6 +197,36 @@ const AIAnalysisCard: React.FC<AIAnalysisCardProps> = ({
                   {getCategoryIcon(category)} {category.replace('-', ' ')}
                 </span>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Enhanced Analysis Section */}
+        {analysis.enhanced && (analysis.historicalPattern || analysis.crossTestPatterns) && (
+          <div className="mb-6 bg-purple-50 rounded-lg p-4">
+            <h4 className="text-sm font-medium text-purple-800 mb-3">🧠 ML-Enhanced Insights</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {analysis.historicalPattern && (
+                <div>
+                  <h5 className="text-xs font-medium text-purple-700 mb-2">Historical Pattern</h5>
+                  <div className="space-y-1">
+                    <div className="text-xs text-purple-600">
+                      Failure frequency: {(analysis.historicalPattern.failureFrequency * 30).toFixed(1)} per month
+                    </div>
+                    <div className="text-xs text-purple-600">
+                      Pattern: {analysis.historicalPattern.timingPattern}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {analysis.crossTestPatterns && analysis.crossTestPatterns.relatedFlakyTests.length > 0 && (
+                <div>
+                  <h5 className="text-xs font-medium text-purple-700 mb-2">Related Tests</h5>
+                  <div className="text-xs text-purple-600">
+                    {analysis.crossTestPatterns.relatedFlakyTests.length} related flaky tests found
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -77,9 +77,9 @@ export interface Recommendation {
 }
 
 export class AIAnalysisService {
-  private static readonly MODEL_VERSION = 'v1.0';
+  private static readonly MODEL_VERSION = 'v1.1'; // Enhanced version
   
-  // Error pattern categories with regex patterns
+  // Enhanced error pattern categories with more comprehensive regex patterns
   private static readonly ERROR_PATTERNS = {
     timing: [
       /timeout/i,
@@ -90,6 +90,15 @@ export class AIAnalysisService {
       /promise.*reject/i,
       /settimeout/i,
       /setinterval/i,
+      /websocket.*close/i,
+      /connection.*reset/i,
+      /stale element reference/i,
+      /element not interactable/i,
+      /element click intercepted/i,
+      /animation.*pending/i,
+      /transition.*pending/i,
+      /loading.*timeout/i,
+      /page.*load.*timeout/i,
     ],
     environment: [
       /environment/i,
@@ -98,6 +107,18 @@ export class AIAnalysisService {
       /config/i,
       /permission/i,
       /eacces/i,
+      /file not found/i,
+      /module not found/i,
+      /path.*not.*exist/i,
+      /docker.*error/i,
+      /container.*error/i,
+      /k8s.*error/i,
+      /kubernetes.*error/i,
+      /port.*already.*use/i,
+      /address.*already.*use/i,
+      /connection refused/i,
+      /no such host/i,
+      /dns.*resolution.*failed/i,
       /enoent/i,
       /connection refused/i,
       /network/i,
@@ -159,7 +180,49 @@ export class AIAnalysisService {
   ];
 
   /**
-   * Analyze a test failure using AI-powered categorization
+   * Enhanced AI analysis with historical pattern recognition
+   */
+  static async analyzeFailureEnhanced(input: AIAnalysisInput): Promise<AIAnalysisResult> {
+    const startTime = Date.now();
+    
+    try {
+      // Enhanced analysis with historical context
+      const historicalPattern = await this.analyzeHistoricalPattern(input);
+      const seasonalFactors = this.analyzeSeasonalFactors(input);
+      const crossTestPatterns = await this.analyzeCrossTestPatterns(input);
+      
+      // Existing analysis with enhancements
+      const result = await this.analyzeFailure(input);
+      
+      // Apply ML enhancements to the result
+      const enhancedConfidence = this.enhanceConfidenceWithML(
+        result.confidence, 
+        historicalPattern, 
+        seasonalFactors
+      );
+      
+      const enhancedRecommendations = this.addHistoricalRecommendations(
+        result.recommendations,
+        historicalPattern,
+        crossTestPatterns
+      );
+      
+      return {
+        ...result,
+        confidence: enhancedConfidence,
+        recommendations: enhancedRecommendations,
+        modelVersion: this.MODEL_VERSION,
+        processingTime: Date.now() - startTime
+      };
+      
+    } catch (error) {
+      console.error('Enhanced AI analysis failed, falling back to basic analysis:', error);
+      return this.analyzeFailure(input);
+    }
+  }
+
+  /**
+   * Original analyze method (maintained for backward compatibility)
    */
   static async analyzeFailure(input: AIAnalysisInput): Promise<AIAnalysisResult> {
     const startTime = Date.now();
@@ -743,5 +806,324 @@ export class AIAnalysisService {
         },
       ],
     };
+  }
+
+  // ===== ENHANCED ML-POWERED METHODS =====
+
+  /**
+   * Analyze historical patterns for this test
+   */
+  private static async analyzeHistoricalPattern(input: AIAnalysisInput): Promise<{
+    failureFrequency: number;
+    timingPattern: 'consistent' | 'random' | 'periodic';
+    environmentalCorrelation: number;
+    recentTrend: 'improving' | 'worsening' | 'stable';
+  }> {
+    try {
+      // Get historical failures for this test in the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const historicalFailures = await prisma.testResult.findMany({
+        where: {
+          testName: input.testName,
+          testSuite: input.testSuite,
+          status: 'failed',
+          createdAt: {
+            gte: thirtyDaysAgo
+          }
+        },
+        select: {
+          createdAt: true,
+          duration: true,
+          errorMessage: true,
+          branch: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+      
+      if (historicalFailures.length === 0) {
+        return {
+          failureFrequency: 0,
+          timingPattern: 'consistent',
+          environmentalCorrelation: 0,
+          recentTrend: 'stable'
+        };
+      }
+      
+      // Calculate failure frequency (failures per day)
+      const failureFrequency = historicalFailures.length / 30;
+      
+      // Analyze timing patterns
+      const timingPattern = this.analyzeTimingPattern(historicalFailures);
+      
+      // Calculate environmental correlation
+      const environmentalCorrelation = this.calculateEnvironmentalCorrelation(historicalFailures);
+      
+      // Analyze recent trend (last 7 days vs previous 7 days)
+      const recentTrend = this.analyzeRecentTrend(historicalFailures);
+      
+      return {
+        failureFrequency,
+        timingPattern,
+        environmentalCorrelation,
+        recentTrend
+      };
+      
+    } catch (error) {
+      console.error('Error analyzing historical pattern:', error);
+      return {
+        failureFrequency: 0,
+        timingPattern: 'consistent',
+        environmentalCorrelation: 0,
+        recentTrend: 'stable'
+      };
+    }
+  }
+
+  /**
+   * Analyze seasonal factors (time of day, day of week)
+   */
+  private static analyzeSeasonalFactors(input: AIAnalysisInput): {
+    timeOfDayFactor: number;
+    dayOfWeekFactor: number;
+    seasonalScore: number;
+  } {
+    const now = new Date();
+    const hour = now.getHours();
+    const dayOfWeek = now.getDay();
+    
+    // Time of day factors (higher score = more likely to fail)
+    let timeOfDayFactor = 0;
+    if (hour >= 0 && hour < 6) timeOfDayFactor = 0.3; // Early morning - less load
+    else if (hour >= 6 && hour < 9) timeOfDayFactor = 0.8; // Morning rush
+    else if (hour >= 9 && hour < 17) timeOfDayFactor = 1.0; // Business hours - peak load
+    else if (hour >= 17 && hour < 22) timeOfDayFactor = 0.7; // Evening
+    else timeOfDayFactor = 0.4; // Night
+    
+    // Day of week factors
+    let dayOfWeekFactor = 0;
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) dayOfWeekFactor = 1.0; // Weekdays
+    else dayOfWeekFactor = 0.3; // Weekends
+    
+    const seasonalScore = (timeOfDayFactor + dayOfWeekFactor) / 2;
+    
+    return {
+      timeOfDayFactor,
+      dayOfWeekFactor,
+      seasonalScore
+    };
+  }
+
+  /**
+   * Analyze cross-test patterns to find related flaky tests
+   */
+  private static async analyzeCrossTestPatterns(input: AIAnalysisInput): Promise<{
+    relatedFlakyTests: string[];
+    commonPatterns: string[];
+    correlationScore: number;
+  }> {
+    try {
+      // Find other flaky tests in the same project with similar error patterns
+      const relatedTests = await prisma.flakyTestPattern.findMany({
+        where: {
+          project: {
+            testResults: {
+              some: {
+                testName: input.testName
+              }
+            }
+          },
+          isActive: true
+        },
+        select: {
+          testName: true,
+          pattern: true,
+          confidence: true
+        },
+        take: 10
+      });
+      
+      const errorText = (input.errorMessage || '').toLowerCase();
+      const relatedFlakyTests: string[] = [];
+      const commonPatterns: string[] = [];
+      
+      for (const test of relatedTests) {
+        if (test.testName !== input.testName) {
+          // Check for similar error patterns
+          const testPattern = (test.pattern || '').toLowerCase();
+          const similarity = this.calculateStringSimilarity(errorText, testPattern);
+          
+          if (similarity > 0.3) {
+            relatedFlakyTests.push(test.testName);
+            commonPatterns.push(test.pattern || 'Unknown pattern');
+          }
+        }
+      }
+      
+      const correlationScore = relatedFlakyTests.length > 0 ? 
+        Math.min(relatedFlakyTests.length / 5, 1.0) : 0;
+      
+      return {
+        relatedFlakyTests,
+        commonPatterns,
+        correlationScore
+      };
+      
+    } catch (error) {
+      console.error('Error analyzing cross-test patterns:', error);
+      return {
+        relatedFlakyTests: [],
+        commonPatterns: [],
+        correlationScore: 0
+      };
+    }
+  }
+
+  /**
+   * Enhance confidence score using ML factors
+   */
+  private static enhanceConfidenceWithML(
+    baseConfidence: number,
+    historicalPattern: any,
+    seasonalFactors: any
+  ): number {
+    let enhancedConfidence = baseConfidence;
+    
+    // Boost confidence for tests with consistent historical patterns
+    if (historicalPattern.failureFrequency > 0.1) {
+      enhancedConfidence += 0.1;
+    }
+    
+    // Boost confidence for tests failing during high-load periods
+    if (seasonalFactors.seasonalScore > 0.7) {
+      enhancedConfidence += 0.05;
+    }
+    
+    // Boost confidence for worsening trends
+    if (historicalPattern.recentTrend === 'worsening') {
+      enhancedConfidence += 0.1;
+    }
+    
+    return Math.min(enhancedConfidence, 0.95); // Cap at 95%
+  }
+
+  /**
+   * Add historical context to recommendations
+   */
+  private static addHistoricalRecommendations(
+    baseRecommendations: RecommendationSet,
+    historicalPattern: any,
+    crossTestPatterns: any
+  ): RecommendationSet {
+    const enhanced = { ...baseRecommendations };
+    
+    // Add recommendations based on historical patterns
+    if (historicalPattern.recentTrend === 'worsening') {
+      enhanced.immediate.unshift({
+        title: 'Urgent: Escalating failure pattern detected',
+        description: 'This test is failing more frequently. Immediate investigation recommended.',
+        priority: 'high',
+        effort: 'medium',
+        category: 'investigation'
+      });
+    }
+    
+    // Add recommendations for related test patterns
+    if (crossTestPatterns.relatedFlakyTests.length > 0) {
+      enhanced.shortTerm.push({
+        title: 'Investigate related flaky tests',
+        description: `Found ${crossTestPatterns.relatedFlakyTests.length} related flaky tests. Consider batch fixing.`,
+        priority: 'medium',
+        effort: 'high',
+        category: 'batch-fix'
+      });
+    }
+    
+    return enhanced;
+  }
+
+  // ===== HELPER METHODS =====
+
+  private static analyzeTimingPattern(failures: any[]): 'consistent' | 'random' | 'periodic' {
+    if (failures.length < 3) return 'consistent';
+    
+    // Simple heuristic: if failures happen at similar intervals, it's periodic
+    const intervals = [];
+    for (let i = 1; i < failures.length; i++) {
+      const interval = failures[i-1].createdAt.getTime() - failures[i].createdAt.getTime();
+      intervals.push(interval);
+    }
+    
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    const variance = intervals.reduce((sum, interval) => sum + Math.pow(interval - avgInterval, 2), 0) / intervals.length;
+    const stdDev = Math.sqrt(variance);
+    
+    if (stdDev / avgInterval < 0.5) return 'periodic';
+    return 'random';
+  }
+
+  private static calculateEnvironmentalCorrelation(failures: any[]): number {
+    // Simple heuristic: higher correlation if failures happen on similar branches
+    const branches = failures.map(f => f.branch).filter(Boolean);
+    const uniqueBranches = new Set(branches);
+    
+    if (branches.length === 0) return 0;
+    return 1 - (uniqueBranches.size / branches.length);
+  }
+
+  private static analyzeRecentTrend(failures: any[]): 'improving' | 'worsening' | 'stable' {
+    if (failures.length < 4) return 'stable';
+    
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    
+    const recentFailures = failures.filter(f => f.createdAt >= sevenDaysAgo).length;
+    const previousFailures = failures.filter(f => f.createdAt >= fourteenDaysAgo && f.createdAt < sevenDaysAgo).length;
+    
+    if (recentFailures > previousFailures * 1.5) return 'worsening';
+    if (recentFailures < previousFailures * 0.5) return 'improving';
+    return 'stable';
+  }
+
+  private static calculateStringSimilarity(str1: string, str2: string): number {
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const editDistance = this.levenshteinDistance(longer, shorter);
+    return (longer.length - editDistance) / longer.length;
+  }
+
+  private static levenshteinDistance(str1: string, str2: string): number {
+    const matrix = [];
+    
+    for (let i = 0; i <= str2.length; i++) {
+      matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= str1.length; j++) {
+      matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= str2.length; i++) {
+      for (let j = 1; j <= str1.length; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
   }
 }

@@ -55,6 +55,7 @@ export interface QuarantineStats {
 }
 
 export class QuarantineService {
+  private static readonly NOTIFICATION_SERVICE = require('./notification.service').NotificationService;
   private static readonly DEFAULT_RULES: QuarantineRule[] = [
     {
       name: 'High Failure Rate',
@@ -206,6 +207,92 @@ export class QuarantineService {
       impactScore: 0,
       triggeredBy: 'none',
     };
+  }
+
+  /**
+   * Automated quarantine evaluation and execution
+   */
+  static async autoEvaluateAndQuarantine(
+    projectId: string,
+    testName: string,
+    testSuite: string | undefined,
+    testResult: any
+  ): Promise<{ quarantined: boolean; decision?: QuarantineDecision }> {
+    try {
+      // Get recent test history for evaluation
+      const testHistory = await this.getTestHistory(projectId, testName, testSuite);
+      
+      if (testHistory.length < 3) {
+        return { quarantined: false }; // Need minimum history
+      }
+      
+      // Calculate evaluation data
+      const evaluationData = await this.buildEvaluationData(
+        projectId, 
+        testName, 
+        testSuite, 
+        testHistory
+      );
+      
+      // Evaluate quarantine decision
+      const decision = await this.evaluateQuarantine(evaluationData);
+      
+      if (decision.shouldQuarantine) {
+        await this.quarantineTest(projectId, testName, testSuite, decision);
+        
+        // Send notification
+        await this.NOTIFICATION_SERVICE.sendQuarantineNotification({
+          projectId,
+          testName,
+          testSuite,
+          decision,
+          type: 'auto_quarantine'
+        });
+        
+        return { quarantined: true, decision };
+      }
+      
+      return { quarantined: false, decision };
+      
+    } catch (error) {
+      console.error('Error in auto-quarantine evaluation:', error);
+      return { quarantined: false };
+    }
+  }
+
+  /**
+   * Automated unquarantine evaluation and execution
+   */
+  static async autoEvaluateUnquarantine(projectId: string): Promise<number> {
+    try {
+      const quarantinedTests = await this.getQuarantinedTests(projectId);
+      let unquarantinedCount = 0;
+      
+      for (const test of quarantinedTests) {
+        const decision = await this.evaluateUnquarantine(test);
+        
+        if (decision.shouldUnquarantine) {
+          await this.unquarantineTest(test.id, decision.reason, 'auto');
+          
+          // Send notification
+          await this.NOTIFICATION_SERVICE.sendQuarantineNotification({
+            projectId,
+            testName: test.testName,
+            testSuite: test.testSuite,
+            decision,
+            type: 'auto_unquarantine'
+          });
+          
+          unquarantinedCount++;
+        }
+      }
+      
+      return unquarantinedCount;
+      
+    } catch (error) {
+      console.error('Error in auto-unquarantine evaluation:', error);
+      return 0;
+    }
   }
 
   /**
@@ -602,5 +689,147 @@ export class QuarantineService {
         },
       });
     }
+  }
+
+  // ===== AUTOMATION HELPER METHODS =====
+
+  /**
+   * Get active flaky tests for evaluation
+   */
+  static async getActiveFlakyTests(projectId: string): Promise<any[]> {
+    return await prisma.flakyTestPattern.findMany({
+      where: {
+        projectId,
+        isActive: true,
+        isQuarantined: false // Only non-quarantined tests
+      },
+      orderBy: {
+        failureRate: 'desc' // Process highest failure rate first
+      }
+    });
+  }
+
+  /**
+   * Get test history for evaluation
+   */
+  private static async getTestHistory(
+    projectId: string,
+    testName: string,
+    testSuite?: string
+  ): Promise<any[]> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    return await prisma.testResult.findMany({
+      where: {
+        project: { id: projectId },
+        testName,
+        testSuite: testSuite || null,
+        createdAt: {
+          gte: thirtyDaysAgo
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+  }
+
+  /**
+   * Build evaluation data from test history
+   */
+  private static async buildEvaluationData(
+    projectId: string,
+    testName: string,
+    testSuite: string | undefined,
+    testHistory: any[]
+  ): Promise<QuarantineEvaluationData> {
+    const totalRuns = testHistory.length;
+    const failedRuns = testHistory.filter(t => t.status === 'failed').length;
+    const failureRate = totalRuns > 0 ? failedRuns / totalRuns : 0;
+
+    // Calculate consecutive failures from most recent results
+    let consecutiveFailures = 0;
+    for (const result of testHistory) {
+      if (result.status === 'failed') {
+        consecutiveFailures++;
+      } else {
+        break;
+      }
+    }
+
+    // Get recent failures (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentFailures = testHistory.filter(t => 
+      t.status === 'failed' && t.createdAt >= sevenDaysAgo
+    );
+
+    // Determine if this is a high-impact test
+    const highImpactSuites = ['e2e', 'integration', 'critical', 'smoke'];
+    const isHighImpact = testSuite ? 
+      highImpactSuites.some(suite => testSuite.toLowerCase().includes(suite)) :
+      false;
+
+    // Get flaky test pattern for confidence
+    const flakyPattern = await prisma.flakyTestPattern.findFirst({
+      where: {
+        projectId,
+        testName,
+        testSuite: testSuite || null
+      }
+    });
+
+    const confidence = flakyPattern?.confidence || 0.5;
+    const lastFailure = recentFailures.length > 0 ? recentFailures[0].createdAt : undefined;
+
+    return {
+      testName,
+      testSuite,
+      projectId,
+      failureRate,
+      confidence,
+      totalRuns,
+      failedRuns,
+      consecutiveFailures,
+      recentFailures,
+      lastFailure,
+      isHighImpact,
+      ciProvider: testHistory[0]?.ciProvider,
+      branch: testHistory[0]?.branch
+    };
+  }
+
+  /**
+   * Fixed unquarantine method with proper parameter types
+   */
+  static async unquarantineTest(
+    flakyTestPatternId: string,
+    reason: string,
+    userId?: string
+  ): Promise<void> {
+    const triggeredBy = userId || 'auto';
+
+    // Update the flaky test pattern
+    await prisma.flakyTestPattern.update({
+      where: { id: flakyTestPatternId },
+      data: {
+        isQuarantined: false,
+        quarantinedAt: null,
+        quarantinedBy: null,
+        quarantineReason: null,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Record unquarantine history
+    await prisma.quarantineHistory.create({
+      data: {
+        flakyTestPatternId,
+        action: 'unquarantined',
+        reason,
+        triggeredBy,
+        metadata: {} as any,
+      },
+    });
   }
 }

@@ -260,6 +260,79 @@ router.delete('/:projectId/:testName', async (req: Request, res: Response): Prom
 
 // AI-POWERED ENDPOINTS
 
+// POST /api/flaky-tests/ai-analysis/enhanced - Enhanced AI analysis for a test result
+router.post('/ai-analysis/enhanced', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    const analysisSchema = z.object({
+      testName: z.string().min(1),
+      testSuite: z.string().optional(),
+      errorMessage: z.string().optional(),
+      stackTrace: z.string().optional(),
+      duration: z.number().optional(),
+      status: z.string(),
+      branch: z.string().optional(),
+      ciProvider: z.string().optional(),
+      environmentalContext: z.object({
+        ciRunner: z.string().optional(),
+        ciRegion: z.string().optional(),
+        nodeVersion: z.string().optional(),
+        timeOfDay: z.string().optional(),
+        dayOfWeek: z.string().optional(),
+        concurrentJobs: z.number().optional(),
+        cpuUsage: z.number().optional(),
+        memoryUsage: z.number().optional(),
+        networkLatency: z.number().optional(),
+        externalServices: z.record(z.any()).optional(),
+      }).optional(),
+    });
+
+    const validatedData = analysisSchema.parse(req.body);
+    
+    // Use enhanced AI analysis
+    const analysis = await AIAnalysisService.analyzeFailureEnhanced({
+      testName: validatedData.testName,
+      testSuite: validatedData.testSuite,
+      errorMessage: validatedData.errorMessage,
+      stackTrace: validatedData.stackTrace,
+      duration: validatedData.duration,
+      status: validatedData.status,
+      branch: validatedData.branch,
+      ciProvider: validatedData.ciProvider,
+      environmentalContext: validatedData.environmentalContext,
+      historicalFailures: [], // Would be populated from database in full implementation
+    });
+
+    res.json({
+      success: true,
+      analysis,
+      enhanced: true,
+      modelVersion: analysis.modelVersion,
+      processingTime: analysis.processingTime,
+    });
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: error.errors,
+      });
+      return;
+    }
+
+    if (error instanceof Error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/flaky-tests/:projectId/with-ai - Get flaky tests with AI analysis
 router.get('/:projectId/with-ai', async (req: Request, res: Response): Promise<void> => {
   try {

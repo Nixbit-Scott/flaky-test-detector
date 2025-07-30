@@ -51,6 +51,8 @@ const QuarantineDashboard: React.FC<QuarantineDashboardProps> = ({ projectId }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [automationEnabled, setAutomationEnabled] = useState(true);
+  const [autoEvaluating, setAutoEvaluating] = useState(false);
   
   const { token } = useAuth();
 
@@ -83,6 +85,66 @@ const QuarantineDashboard: React.FC<QuarantineDashboardProps> = ({ projectId }) 
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAutoEvaluate = async () => {
+    try {
+      setAutoEvaluating(true);
+      
+      const response = await fetch(`/api/quarantine/${projectId}/auto-evaluate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to run auto-evaluation');
+      }
+
+      const data = await response.json();
+      
+      // Show success message
+      alert(`Auto-evaluation complete: ${data.data.newlyQuarantined} quarantined, ${data.data.unquarantined} unquarantined`);
+      
+      // Refresh data
+      await fetchQuarantineData();
+      
+    } catch (err) {
+      console.error('Error running auto-evaluation:', err);
+      alert('Failed to run auto-evaluation');
+    } finally {
+      setAutoEvaluating(false);
+    }
+  };
+
+  const handleToggleAutomation = async () => {
+    try {
+      const newState = !automationEnabled;
+      
+      const response = await fetch(`/api/quarantine/${projectId}/schedule-automation`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          enabled: newState,
+          schedule: 'on_test_failure'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update automation settings');
+      }
+
+      setAutomationEnabled(newState);
+      
+    } catch (err) {
+      console.error('Error updating automation:', err);
+      alert('Failed to update automation settings');
     }
   };
 
@@ -310,6 +372,52 @@ const QuarantineDashboard: React.FC<QuarantineDashboardProps> = ({ projectId }) 
           >
             {actionLoading === 'check' ? 'Checking...' : 'Run Stability Check'}
           </button>
+        </div>
+      </div>
+
+      {/* Automation Controls */}
+      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">🤖 Automated Quarantine System</h3>
+            <p className="text-indigo-100 mb-4">
+              Intelligent automation that quarantines flaky tests and unquarantines stable ones.
+            </p>
+            <div className="flex items-center space-x-4 text-sm text-indigo-100">
+              <span className={`flex items-center ${automationEnabled ? 'text-green-300' : 'text-red-300'}`}>
+                <span className="w-2 h-2 rounded-full ${automationEnabled ? 'bg-green-300' : 'bg-red-300'} mr-2"></span>
+                Automation {automationEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <span>• Auto-quarantine on test failures</span>
+              <span>• Smart unquarantine when stable</span>
+            </div>
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={handleAutoEvaluate}
+              disabled={autoEvaluating}
+              className="bg-white text-indigo-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              {autoEvaluating ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 inline-block mr-2"></span>
+                  Evaluating...
+                </>
+              ) : (
+                '▶️ Run Evaluation'
+              )}
+            </button>
+            <button
+              onClick={handleToggleAutomation}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                automationEnabled 
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              {automationEnabled ? '⏸️ Disable' : '▶️ Enable'}
+            </button>
+          </div>
         </div>
       </div>
 

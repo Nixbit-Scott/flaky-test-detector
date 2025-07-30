@@ -1,4 +1,6 @@
 import { prisma } from './database.service';
+import { QuarantineService } from './quarantine.service';
+import { FlakyTestDetectionService } from './flaky-test-detection.service';
 
 export interface TestResultData {
   testName: string;
@@ -38,6 +40,49 @@ export interface NormalizedWebhookData {
 }
 
 export class TestResultService {
+  /**
+   * Process automated quarantine evaluation for new test results
+   */
+  private static async processAutomatedQuarantine(
+    projectId: string, 
+    testResults: TestResultData[]
+  ): Promise<void> {
+    try {
+      // Process failed tests for potential quarantine
+      const failedTests = testResults.filter(result => result.status === 'failed');
+      
+      for (const failedTest of failedTests) {
+        // Skip if already processing or if this is a retry
+        if (failedTest.retryAttempt && failedTest.retryAttempt > 0) {
+          continue;
+        }
+        
+        // Auto-evaluate for quarantine
+        const result = await QuarantineService.autoEvaluateAndQuarantine(
+          projectId,
+          failedTest.testName,
+          failedTest.testSuite,
+          failedTest
+        );
+        
+        if (result.quarantined) {
+          console.log(`Auto-quarantined test: ${failedTest.testName} in ${projectId}`);
+        }
+      }
+      
+      // Run periodic unquarantine evaluation (limit to once per test run to avoid spam)
+      if (Math.random() < 0.1) { // 10% chance to run unquarantine check
+        const unquarantinedCount = await QuarantineService.autoEvaluateUnquarantine(projectId);
+        if (unquarantinedCount > 0) {
+          console.log(`Auto-unquarantined ${unquarantinedCount} tests in ${projectId}`);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error in automated quarantine processing:', error);
+      // Don't throw - quarantine failures shouldn't break test result processing
+    }
+  }
   static async createTestRun(testRunData: TestRunData) {
     const {
       projectId,
@@ -87,6 +132,9 @@ export class TestResultService {
           retryAttempt: result.retryAttempt || 0,
         })),
       });
+
+      // AUTOMATED QUARANTINE PROCESSING
+      await this.processAutomatedQuarantine(projectId, testResults);
     }
 
     return testRun;

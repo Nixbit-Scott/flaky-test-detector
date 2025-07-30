@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { QuarantineService } from '../services/quarantine.service';
 import { QuarantinePolicyService, QuarantinePolicyConfig } from '../services/quarantine-policy.service';
 import { QuarantineAnalyticsService } from '../services/quarantine-analytics.service';
+import { QuarantineSchedulerService } from '../services/quarantine-scheduler.service';
 
 const router = Router();
 
@@ -48,6 +49,92 @@ const trackImpactSchema = z.object({
   ciTimeWasted: z.number().optional(),
   developerHours: z.number().optional(),
   falsePositive: z.boolean().optional(),
+});
+
+// AUTOMATED QUARANTINE ENDPOINTS
+
+// POST /api/quarantine/:projectId/auto-evaluate - Run automated quarantine evaluation
+router.post('/:projectId/auto-evaluate', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    const { projectId } = req.params;
+    
+    // Run auto-evaluation for all active flaky tests
+    const flakyTests = await QuarantineService.getActiveFlakyTests(projectId);
+    let quarantinedCount = 0;
+    let evaluatedCount = 0;
+    
+    for (const test of flakyTests) {
+      evaluatedCount++;
+      const result = await QuarantineService.autoEvaluateAndQuarantine(
+        projectId,
+        test.testName,
+        test.testSuite,
+        test
+      );
+      
+      if (result.quarantined) {
+        quarantinedCount++;
+      }
+    }
+    
+    // Also run unquarantine evaluation
+    const unquarantinedCount = await QuarantineService.autoEvaluateUnquarantine(projectId);
+    
+    res.json({
+      success: true,
+      data: {
+        evaluatedTests: evaluatedCount,
+        newlyQuarantined: quarantinedCount,
+        unquarantined: unquarantinedCount
+      },
+      message: `Auto-evaluation complete: ${quarantinedCount} quarantined, ${unquarantinedCount} unquarantined out of ${evaluatedCount} evaluated tests`
+    });
+
+  } catch (error) {
+    console.error('Error in auto-evaluation:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// POST /api/quarantine/:projectId/schedule-automation - Enable/disable automated quarantine
+router.post('/:projectId/schedule-automation', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    const { projectId } = req.params;
+    const { enabled, schedule } = req.body;
+    
+    // Update project automation settings using scheduler service
+    if (enabled) {
+      await QuarantineSchedulerService.enableProjectAutomation(projectId, schedule || 'on_test_failure');
+    } else {
+      await QuarantineSchedulerService.disableProjectAutomation(projectId);
+    }
+    
+    res.json({
+      success: true,
+      message: `Quarantine automation ${enabled ? 'enabled' : 'disabled'} for project`,
+      data: { enabled, schedule }
+    });
+
+  } catch (error) {
+    console.error('Error updating automation settings:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
 });
 
 // GET /api/quarantine/:projectId - Get quarantined tests for a project

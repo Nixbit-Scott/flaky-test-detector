@@ -37,7 +37,71 @@ export interface DailySummary {
   }>;
 }
 
+export interface QuarantineNotification {
+  projectId: string;
+  testName: string;
+  testSuite?: string;
+  decision: any;
+  type: 'auto_quarantine' | 'auto_unquarantine' | 'manual_quarantine' | 'manual_unquarantine';
+}
+
 export class NotificationService {
+  /**
+   * Send quarantine notification
+   */
+  public async sendQuarantineNotification(notification: QuarantineNotification): Promise<void> {
+    try {
+      const project = await prisma.project.findUnique({
+        where: { id: notification.projectId },
+        select: { name: true, repository: true }
+      });
+
+      if (!project) {
+        logger.warn(`Project not found for quarantine notification: ${notification.projectId}`);
+        return;
+      }
+
+      const isQuarantine = notification.type.includes('quarantine') && !notification.type.includes('unquarantine');
+      const isAuto = notification.type.includes('auto');
+      
+      const title = isQuarantine 
+        ? `🔒 Test ${isAuto ? 'Auto-' : ''}Quarantined`
+        : `🔓 Test ${isAuto ? 'Auto-' : ''}Unquarantined`;
+      
+      const testFullName = notification.testSuite 
+        ? `${notification.testSuite} > ${notification.testName}`
+        : notification.testName;
+
+      const message = isQuarantine
+        ? `Test "${testFullName}" has been ${isAuto ? 'automatically ' : ''}quarantined in ${project.name}.\n\nReason: ${notification.decision.reason}\nConfidence: ${(notification.decision.confidence * 100).toFixed(1)}%`
+        : `Test "${testFullName}" has been ${isAuto ? 'automatically ' : ''}released from quarantine in ${project.name}.\n\nReason: ${notification.decision.reason || notification.decision}`;
+
+      // Create integration alert
+      const integrationAlert: AlertPayload = {
+        type: isQuarantine ? 'test_quarantined' : 'test_unquarantined',
+        projectName: project.name,
+        projectId: notification.projectId,
+        title,
+        message,
+        priority: isQuarantine ? 'medium' : 'low',
+        timestamp: new Date(),
+        metadata: {
+          testName: notification.testName,
+          testSuite: notification.testSuite,
+          automated: isAuto,
+          decision: notification.decision
+        }
+      };
+
+      // Send to all configured integrations for the project
+      await IntegrationService.sendAlert(notification.projectId, integrationAlert);
+      
+      logger.info(`Sent quarantine notification for ${testFullName} in ${project.name}`);
+      
+    } catch (error) {
+      logger.error('Error sending quarantine notification:', error);
+    }
+  }
   public async sendHighRiskAlert(alert: HighRiskAlert, userEmail: string): Promise<void> {
     try {
       logger.info(`Sending high-risk alert for ${alert.filePath} in project ${alert.projectName}`);

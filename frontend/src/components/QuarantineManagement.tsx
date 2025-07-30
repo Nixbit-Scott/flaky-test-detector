@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import QuarantineDashboard from './QuarantineDashboard';
 import QuarantinePolicyManager from './QuarantinePolicyManager';
+import QuarantineAnalytics from './QuarantineAnalytics';
 
 interface QuarantineManagementProps {
   projectId: string;
@@ -14,17 +15,7 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ projectId }
       case 'policies':
         return <QuarantinePolicyManager projectId={projectId} />;
       case 'analytics':
-        return (
-          <div className="text-center py-12">
-            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl">📊</span>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Analytics Coming Soon</h3>
-            <p className="text-gray-500">
-              Advanced quarantine analytics and reporting features will be available in the next update.
-            </p>
-          </div>
-        );
+        return <QuarantineAnalytics projectId={projectId} />;
       default:
         return <QuarantineDashboard projectId={projectId} />;
     }
