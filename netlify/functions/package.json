@@ -5,6 +5,7 @@
   "dependencies": {
     "@netlify/functions": "^4.1.15",
     "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.39.0",
     "bcrypt": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "zod": "^3.23.8"

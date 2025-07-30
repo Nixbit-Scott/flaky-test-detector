@@ -1,6 +1,15 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { z } from 'zod';
 import * as jwt from 'jsonwebtoken';
+import { 
+  getProjectsByUserId, 
+  createProject, 
+  updateProject, 
+  deleteProject,
+  getUserById,
+  createUser,
+  Project 
+} from './supabase-client';
 
 // Common headers for CORS
 const headers = {
@@ -16,18 +25,6 @@ const createProjectSchema = z.object({
   description: z.string().optional(),
   repositoryUrl: z.string().url().optional(),
 });
-
-// Simple in-memory store for projects (resets on cold start)
-const projects: Map<string, {
-  id: string;
-  name: string;
-  description?: string;
-  repositoryUrl?: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-  isActive: boolean;
-}> = new Map();
 
 
 // Helper function to verify JWT and get user
@@ -93,31 +90,38 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
 async function handleGetProjects(event: HandlerEvent, user: { userId: string; email: string }) {
   try {
-    // Get projects for the authenticated user
-    const userProjects = Array.from(projects.values())
-      .filter(project => project.userId === user.userId)
-      .map(project => ({
-        ...project,
-        repository: project.repositoryUrl || '',
-        branch: 'main',
-        retryEnabled: true,
-        maxRetries: 3,
-        flakyThreshold: 0.2,
-        _count: {
-          testRuns: 0,
-          flakyTests: 0,
-        },
-        testCount: 0,
-        flakyTestCount: 0,
-        lastTestRun: null,
-      }));
+    // Get projects for the authenticated user from Supabase
+    const userProjects = await getProjectsByUserId(user.userId);
+    
+    const formattedProjects = userProjects.map(project => ({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      repositoryUrl: project.repository_url,
+      userId: project.user_id,
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+      isActive: project.is_active,
+      repository: project.repository_url || '',
+      branch: 'main',
+      retryEnabled: true,
+      maxRetries: 3,
+      flakyThreshold: 0.2,
+      _count: {
+        testRuns: 0,
+        flakyTests: 0,
+      },
+      testCount: 0,
+      flakyTestCount: 0,
+      lastTestRun: null,
+    }));
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        projects: userProjects,
-        total: userProjects.length,
+        projects: formattedProjects,
+        total: formattedProjects.length,
       }),
     };
   } catch (error) {
@@ -143,28 +147,40 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
     const body = JSON.parse(event.body);
     const validatedData = createProjectSchema.parse(body);
     
-    // Create project
-    const projectId = 'project-' + Date.now();
-    const now = new Date().toISOString();
+    // Ensure user exists in database
+    let dbUser = await getUserById(user.userId);
+    if (!dbUser) {
+      dbUser = await createUser({
+        id: user.userId,
+        email: user.email,
+        name: user.email.split('@')[0], // Extract name from email
+      });
+    }
     
-    const project = {
+    // Create project in Supabase
+    const projectId = 'project-' + Date.now();
+    const projectData = {
       id: projectId,
       name: validatedData.name,
-      description: validatedData.description || '',
-      repositoryUrl: validatedData.repositoryUrl || '',
-      userId: user.userId,
-      createdAt: now,
-      updatedAt: now,
-      isActive: true,
+      description: validatedData.description,
+      repository_url: validatedData.repositoryUrl,
+      user_id: user.userId,
+      is_active: true,
     };
 
-    // Store project
-    projects.set(projectId, project);
+    const newProject = await createProject(projectData);
 
     // Add mock stats and match frontend interface
     const projectWithStats = {
-      ...project,
-      repository: project.repositoryUrl || '',
+      id: newProject.id,
+      name: newProject.name,
+      description: newProject.description,
+      repositoryUrl: newProject.repository_url,
+      userId: newProject.user_id,
+      createdAt: newProject.created_at,
+      updatedAt: newProject.updated_at,
+      isActive: newProject.is_active,
+      repository: newProject.repository_url || '',
       branch: 'main',
       retryEnabled: true,
       maxRetries: 3,
@@ -178,7 +194,7 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
       lastTestRun: null,
     };
 
-    console.log('Project created successfully:', project.name);
+    console.log('Project created successfully:', newProject.name);
 
     return {
       statusCode: 201,
