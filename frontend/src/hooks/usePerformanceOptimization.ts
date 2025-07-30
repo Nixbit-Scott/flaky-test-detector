@@ -169,12 +169,12 @@ export function useBatchedUpdates<T>(initialState: T, batchDelay = 100) {
     }
 
     timeoutRef.current = setTimeout(() => {
-      setState(prevState => {
+      setState((prevState => {
         return pendingUpdates.current.reduce(
           (acc, update) => ({ ...acc, ...update }),
           prevState
         );
-      });
+      }) as (prevState: T) => T);
       pendingUpdates.current = [];
       timeoutRef.current = null;
     }, batchDelay);

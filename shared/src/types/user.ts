@@ -8,6 +8,9 @@ export interface User {
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Auth token (for API calls)
+  token?: string;
 }
 
 export interface Organization {

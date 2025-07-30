@@ -45,6 +45,28 @@ export interface RootCauseAnalysis {
   estimatedFixEffort: 'low' | 'medium' | 'high';
   similarIssuesCount: number;
   
+  // Enhanced Analysis (for new features)
+  enhanced?: {
+    rootCause?: string;
+    fixProbability?: number;
+    impactScore?: number;
+  };
+  
+  // Historical Pattern Analysis
+  historicalPattern?: {
+    trend: 'improving' | 'stable' | 'degrading';
+    seasonality?: string;
+    frequency?: number;
+    lastOccurred?: Date;
+  };
+  
+  // Cross-test Pattern Detection
+  crossTestPatterns?: {
+    similarTests: number;
+    commonFactors: string[];
+    recommendation: string;
+  }[];
+  
   // Metadata
   modelVersion: string;
   processingTime: number; // milliseconds

@@ -33,6 +33,32 @@ export interface AIAnalysis {
   dataQuality: number;
   createdAt: string;
   updatedAt: string;
+  
+  // Enhanced Analysis (for new features)
+  enhanced?: {
+    rootCause?: string;
+    fixProbability?: number;
+    impactScore?: number;
+  };
+  
+  // Historical Pattern Analysis
+  historicalPattern?: {
+    trend: 'improving' | 'stable' | 'degrading';
+    recentTrend?: 'improving' | 'stable' | 'worsening';
+    seasonality?: string;
+    frequency?: number;
+    failureFrequency?: number;
+    timingPattern?: string;
+    lastOccurred?: Date;
+  };
+  
+  // Cross-test Pattern Detection
+  crossTestPatterns?: {
+    similarTests: number;
+    commonFactors: string[];
+    recommendation: string;
+    relatedFlakyTests: string[];
+  };
 }
 
 interface AIAnalysisCardProps {
