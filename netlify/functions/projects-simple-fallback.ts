@@ -1,15 +1,6 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { z } from 'zod';
 import * as jwt from 'jsonwebtoken';
-import { 
-  getProjectsByUserId, 
-  createProject, 
-  updateProject, 
-  deleteProject,
-  getUserById,
-  createUser,
-  Project 
-} from './supabase-client';
 
 // Common headers for CORS
 const headers = {
@@ -26,6 +17,8 @@ const createProjectSchema = z.object({
   repositoryUrl: z.string().url().optional(),
 });
 
+// Simple in-memory store that persists during function warm-up
+const projectsStore = new Map<string, any[]>();
 
 // Helper function to verify JWT and get user
 async function getUserFromToken(authHeader: string | undefined) {
@@ -56,7 +49,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
   }
 
   try {
-    console.log('Projects function called:', {
+    console.log('Projects simple fallback function called:', {
       path: event.path,
       httpMethod: event.httpMethod,
     });
@@ -68,7 +61,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // Handle different HTTP methods
     switch (event.httpMethod) {
       case 'GET':
-        return await handleGetProjects(event, user);
+        return await handleGetProjects(user);
       case 'POST':
         return await handleCreateProject(event, user);
       default:
@@ -79,7 +72,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         };
     }
   } catch (error) {
-    console.error('Projects function error:', error);
+    console.error('Projects simple fallback function error:', error);
     
     // Check if it's an authentication error
     if (error instanceof Error && error.message.includes('token')) {
@@ -103,58 +96,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
   }
 };
 
-// Simple in-memory store that persists during function warm-up
-const projectsStore = new Map<string, any[]>();
-
-async function handleGetProjects(event: HandlerEvent, user: { userId: string; email: string }) {
+async function handleGetProjects(user: { userId: string; email: string }) {
   try {
-    console.log('Attempting to get projects for user:', user.userId);
-    
-    // Try Supabase first
-    try {
-      const userProjects = await getProjectsByUserId(user.userId);
-      console.log('Successfully got projects from Supabase:', userProjects.length);
-      
-      if (userProjects.length > 0) {
-        const formattedProjects = userProjects.map(project => ({
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          repositoryUrl: project.repository_url,
-          userId: project.user_id,
-          createdAt: project.created_at,
-          updatedAt: project.updated_at,
-          isActive: project.is_active,
-          repository: project.repository_url || '',
-          branch: 'main',
-          retryEnabled: true,
-          maxRetries: 3,
-          flakyThreshold: 0.2,
-          _count: {
-            testRuns: 0,
-            flakyTests: 0,
-          },
-          testCount: 0,
-          flakyTestCount: 0,
-          lastTestRun: null,
-        }));
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            projects: formattedProjects,
-            total: formattedProjects.length,
-          }),
-        };
-      }
-    } catch (supabaseError) {
-      console.warn('Supabase failed, using fallback:', supabaseError);
-    }
-    
-    // Fallback to in-memory store
+    // Get projects for the authenticated user from in-memory store
     const userProjects = projectsStore.get(user.userId) || [];
-    console.log('Using fallback storage, found projects:', userProjects.length);
     
     const formattedProjects = userProjects.map(project => ({
       ...project,
@@ -185,18 +130,13 @@ async function handleGetProjects(event: HandlerEvent, user: { userId: string; em
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        error: 'Failed to fetch projects',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }),
+      body: JSON.stringify({ error: 'Failed to fetch projects' }),
     };
   }
 }
 
 async function handleCreateProject(event: HandlerEvent, user: { userId: string; email: string }) {
   try {
-    console.log('Attempting to create project for user:', user.userId);
-    
     if (!event.body) {
       return {
         statusCode: 400,
@@ -207,80 +147,31 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
 
     const body = JSON.parse(event.body);
     const validatedData = createProjectSchema.parse(body);
-    console.log('Validated project data:', validatedData);
     
+    // Create project in memory
     const projectId = 'project-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     const now = new Date().toISOString();
     
-    // Try Supabase first
-    let newProject;
-    try {
-      console.log('Attempting to create project in Supabase...');
-      
-      // Ensure user exists in database
-      let dbUser = await getUserById(user.userId);
-      if (!dbUser) {
-        dbUser = await createUser({
-          id: user.userId,
-          email: user.email,
-          name: user.email.split('@')[0], // Extract name from email
-        });
-      }
-      
-      const projectData = {
-        id: projectId,
-        name: validatedData.name,
-        description: validatedData.description,
-        repository_url: validatedData.repositoryUrl,
-        user_id: user.userId,
-        is_active: true,
-      };
+    const newProject = {
+      id: projectId,
+      name: validatedData.name,
+      description: validatedData.description || '',
+      repositoryUrl: validatedData.repositoryUrl || '',
+      userId: user.userId,
+      createdAt: now,
+      updatedAt: now,
+      isActive: true,
+    };
 
-      newProject = await createProject(projectData);
-      console.log('Successfully created project in Supabase:', newProject.name);
-      
-    } catch (supabaseError) {
-      console.warn('Supabase failed, using fallback storage:', supabaseError);
-      
-      // Fallback to in-memory storage
-      newProject = {
-        id: projectId,
-        name: validatedData.name,
-        description: validatedData.description,
-        repository_url: validatedData.repositoryUrl,
-        user_id: user.userId,
-        is_active: true,
-        created_at: now,
-        updated_at: now,
-      };
-      
-      // Store in memory
-      const userProjects = projectsStore.get(user.userId) || [];
-      userProjects.push({
-        id: projectId,
-        name: validatedData.name,
-        description: validatedData.description || '',
-        repositoryUrl: validatedData.repositoryUrl || '',
-        userId: user.userId,
-        createdAt: now,
-        updatedAt: now,
-        isActive: true,
-      });
-      projectsStore.set(user.userId, userProjects);
-      console.log('Successfully created project in fallback storage:', newProject.name);
-    }
+    // Store in memory
+    const userProjects = projectsStore.get(user.userId) || [];
+    userProjects.push(newProject);
+    projectsStore.set(user.userId, userProjects);
 
     // Add mock stats and match frontend interface
     const projectWithStats = {
-      id: newProject.id,
-      name: newProject.name,
-      description: newProject.description,
-      repositoryUrl: newProject.repository_url,
-      userId: newProject.user_id,
-      createdAt: newProject.created_at,
-      updatedAt: newProject.updated_at,
-      isActive: newProject.is_active,
-      repository: newProject.repository_url || '',
+      ...newProject,
+      repository: newProject.repositoryUrl || '',
       branch: 'main',
       retryEnabled: true,
       maxRetries: 3,
@@ -294,7 +185,7 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
       lastTestRun: null,
     };
 
-    console.log('Project creation completed successfully:', projectWithStats.name);
+    console.log('Project created successfully in fallback:', newProject.name);
 
     return {
       statusCode: 201,
@@ -305,7 +196,7 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
       }),
     };
   } catch (error) {
-    console.error('Error creating project:', error);
+    console.error('Error creating project in fallback:', error);
     
     if (error instanceof z.ZodError) {
       return {
