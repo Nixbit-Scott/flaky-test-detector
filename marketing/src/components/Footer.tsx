@@ -1,9 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Zap, Github, Twitter, Linkedin } from 'lucide-react'
+import { marketingApi } from '../services/api'
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear()
+  const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState<'success' | 'error' | ''>('')
 
   const footerLinks = {
     product: [
@@ -31,6 +36,46 @@ const Footer: React.FC = () => {
     { name: 'Twitter', icon: Twitter, href: 'https://twitter.com' },
     { name: 'LinkedIn', icon: Linkedin, href: 'https://linkedin.com' },
   ]
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!email.trim()) {
+      setMessage('Please enter your email address')
+      setMessageType('error')
+      return
+    }
+
+    setIsSubmitting(true)
+    setMessage('')
+    
+    try {
+      const response = await marketingApi.submitSignup({
+        email: email.trim(),
+        source: 'footer-newsletter',
+        utmParameters: {
+          utm_source: 'website',
+          utm_medium: 'footer',
+          utm_campaign: 'newsletter'
+        }
+      })
+      
+      if (response.success) {
+        setMessage('Thanks for subscribing! We\'ll keep you updated on new features and blog posts.')
+        setMessageType('success')
+        setEmail('')
+      } else {
+        setMessage(response.message || 'Something went wrong. Please try again.')
+        setMessageType('error')
+      }
+    } catch (error) {
+      console.error('Newsletter signup error:', error)
+      setMessage('Failed to subscribe. Please try again later.')
+      setMessageType('error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <footer className="bg-white border-t border-gray-200">
@@ -133,16 +178,31 @@ const Footer: React.FC = () => {
               <p className="text-sm text-gray-600 mb-4">
                 Get the latest updates on new features and beta releases.
               </p>
-              <div className="flex flex-col space-y-2">
+              <form onSubmit={handleEmailSubmit} className="flex flex-col space-y-2">
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isSubmitting}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
+                  required
                 />
-                <button className="btn-primary text-sm py-2">
-                  Subscribe
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="btn-primary text-sm py-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Subscribing...' : 'Subscribe'}
                 </button>
-              </div>
+                {message && (
+                  <div className={`text-xs mt-2 ${
+                    messageType === 'success' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {message}
+                  </div>
+                )}
+              </form>
             </div>
           </div>
         </div>
