@@ -288,6 +288,113 @@
                     </div>
                 </div>
 
+                <!-- Marketing Analytics Section -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6">📈 Marketing Analytics</h2>
+                    
+                    <!-- Marketing Metrics Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-500">Total Signups</h3>
+                                    <p id="marketing-total" class="text-2xl font-bold text-gray-900">-</p>
+                                </div>
+                                <div class="text-blue-500">
+                                    <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-500">This Week</h3>
+                                    <p id="marketing-week" class="text-2xl font-bold text-green-600">-</p>
+                                    <p id="marketing-week-growth" class="text-xs text-gray-500">-</p>
+                                </div>
+                                <div class="text-green-500">
+                                    <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-500">This Month</h3>
+                                    <p id="marketing-month" class="text-2xl font-bold text-blue-600">-</p>
+                                    <p id="marketing-month-growth" class="text-xs text-gray-500">-</p>
+                                </div>
+                                <div class="text-blue-500">
+                                    <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-500">This Year</h3>
+                                    <p id="marketing-year" class="text-2xl font-bold text-purple-600">-</p>
+                                </div>
+                                <div class="text-purple-500">
+                                    <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Marketing Charts -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Signup Trends (30 Days)</h3>
+                            <canvas id="marketingTrendsChart" width="400" height="200"></canvas>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Signup Sources</h3>
+                            <canvas id="marketingSourcesChart" width="400" height="200"></canvas>
+                            <div id="marketing-sources-legend" class="mt-4 space-y-2">
+                                <!-- Sources will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Signups -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">Recent Marketing Signups</h3>
+                            <button onclick="refreshMarketingData()" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Signed Up</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="marketing-signups-table" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
+                                            Loading marketing signups...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Monitoring Data -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Email System Status -->
@@ -553,7 +660,8 @@
                     this.loadRecentActivity(),
                     this.loadMonitoringData(),
                     this.loadNetlifyMetrics(),
-                    this.loadUsers()
+                    this.loadUsers(),
+                    this.loadMarketingAnalytics()
                 ]);
             }
 
@@ -670,6 +778,74 @@
                                 legend: {
                                     position: 'bottom',
                                     labels: { fontSize: 12 }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Marketing Trends Chart (Line)
+                const marketingTrendsCtx = document.getElementById('marketingTrendsChart');
+                if (marketingTrendsCtx) {
+                    this.charts.marketingTrends = new Chart(marketingTrendsCtx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                label: 'Daily Signups',
+                                data: [],
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { fontSize: 12 }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Marketing Sources Chart (Doughnut)
+                const marketingSourcesCtx = document.getElementById('marketingSourcesChart');
+                if (marketingSourcesCtx) {
+                    this.charts.marketingSources = new Chart(marketingSourcesCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                data: [],
+                                backgroundColor: [
+                                    '#3b82f6', // Blue
+                                    '#10b981', // Green
+                                    '#f59e0b', // Yellow
+                                    '#8b5cf6', // Purple
+                                    '#ef4444', // Red
+                                    '#06b6d4', // Cyan
+                                    '#84cc16'  // Lime
+                                ],
+                                borderWidth: 2,
+                                borderColor: '#ffffff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false // We'll use custom legend
                                 }
                             }
                         }
@@ -996,6 +1172,182 @@
                 if (months < 12) return `${months}mo ago`;
                 return `${Math.floor(months / 12)}y ago`;
             }
+
+            // Marketing Analytics Methods
+            async loadMarketingAnalytics() {
+                try {
+                    console.log('📈 Loading marketing analytics...');
+                    
+                    const response = await fetch(`${this.baseUrl}/.netlify/functions/marketing-analytics`, {
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success) {
+                            this.updateMarketingMetrics(data.data.summary);
+                            this.updateMarketingCharts(data.data.trends, data.data.sources);
+                            this.updateRecentSignups(data.data.recentSignups);
+                        } else {
+                            throw new Error(data.message || 'Failed to load marketing analytics');
+                        }
+                    } else {
+                        throw new Error('Failed to fetch marketing analytics');
+                    }
+                } catch (error) {
+                    console.error('❌ Marketing analytics loading error:', error);
+                    this.showMarketingError(error.message);
+                }
+            }
+
+            updateMarketingMetrics(summary) {
+                document.getElementById('marketing-total').textContent = summary.total.toString();
+                document.getElementById('marketing-week').textContent = summary.thisWeek.toString();
+                document.getElementById('marketing-month').textContent = summary.thisMonth.toString();
+                document.getElementById('marketing-year').textContent = summary.thisYear.toString();
+
+                // Update growth indicators
+                const weekGrowth = summary.weeklyGrowthRate;
+                const monthGrowth = summary.monthlyGrowthRate;
+                
+                const weekGrowthEl = document.getElementById('marketing-week-growth');
+                const monthGrowthEl = document.getElementById('marketing-month-growth');
+                
+                if (weekGrowthEl) {
+                    const weekText = weekGrowth > 0 ? `+${weekGrowth.toFixed(1)}%` : `${weekGrowth.toFixed(1)}%`;
+                    weekGrowthEl.textContent = weekText;
+                    weekGrowthEl.className = `text-xs ${weekGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`;
+                }
+                
+                if (monthGrowthEl) {
+                    const monthText = monthGrowth > 0 ? `+${monthGrowth.toFixed(1)}%` : `${monthGrowth.toFixed(1)}%`;
+                    monthGrowthEl.textContent = monthText;
+                    monthGrowthEl.className = `text-xs ${monthGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`;
+                }
+            }
+
+            updateMarketingCharts(trends, sources) {
+                // Update trends chart
+                if (this.charts.marketingTrends && trends.daily) {
+                    this.charts.marketingTrends.data.labels = trends.daily.map(d => 
+                        new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    );
+                    this.charts.marketingTrends.data.datasets[0].data = trends.daily.map(d => d.count);
+                    this.charts.marketingTrends.update();
+                }
+
+                // Update sources chart
+                if (this.charts.marketingSources && sources) {
+                    const sourceEntries = Object.entries(sources);
+                    this.charts.marketingSources.data.labels = sourceEntries.map(([source, _]) => 
+                        source === 'unknown' ? 'Direct' : source.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                    );
+                    this.charts.marketingSources.data.datasets[0].data = sourceEntries.map(([_, count]) => count);
+                    this.charts.marketingSources.update();
+
+                    // Update custom legend
+                    this.updateSourcesLegend(sourceEntries);
+                }
+            }
+
+            updateSourcesLegend(sourceEntries) {
+                const legendEl = document.getElementById('marketing-sources-legend');
+                if (!legendEl) return;
+
+                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16'];
+                
+                const legendHtml = sourceEntries.map(([source, count], index) => {
+                    const displayName = source === 'unknown' ? 'Direct' : source.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    const color = colors[index % colors.length];
+                    const percentage = sourceEntries.length > 0 ? ((count / sourceEntries.reduce((sum, [_, c]) => sum + c, 0)) * 100).toFixed(1) : 0;
+                    
+                    return `
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full mr-2" style="background-color: ${color}"></div>
+                                <span class="text-gray-600">${displayName}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-gray-900 font-medium">${count}</span>
+                                <span class="text-gray-500">(${percentage}%)</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                legendEl.innerHTML = legendHtml;
+            }
+
+            updateRecentSignups(recentSignups) {
+                const tableBody = document.getElementById('marketing-signups-table');
+                if (!tableBody) return;
+
+                if (recentSignups.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
+                                No marketing signups found
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                const signupsHtml = recentSignups.map(signup => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${signup.email}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${this.getSourceBadgeClass(signup.source)}">
+                                ${signup.source || 'direct'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${signup.company || '-'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${this.getTimeAgo(signup.createdAt)}
+                        </td>
+                    </tr>
+                `).join('');
+
+                tableBody.innerHTML = signupsHtml;
+            }
+
+            getSourceBadgeClass(source) {
+                const sourceMap = {
+                    'footer-newsletter': 'bg-blue-100 text-blue-800',
+                    'homepage': 'bg-green-100 text-green-800',
+                    'social': 'bg-purple-100 text-purple-800',
+                    'referral': 'bg-yellow-100 text-yellow-800',
+                    'direct': 'bg-gray-100 text-gray-800'
+                };
+                return sourceMap[source] || 'bg-gray-100 text-gray-800';
+            }
+
+            showMarketingError(message) {
+                // Update metrics with error state
+                document.getElementById('marketing-total').textContent = 'Error';
+                document.getElementById('marketing-week').textContent = 'Error';
+                document.getElementById('marketing-month').textContent = 'Error';
+                document.getElementById('marketing-year').textContent = 'Error';
+
+                // Update table with error message
+                const tableBody = document.getElementById('marketing-signups-table');
+                if (tableBody) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-sm text-red-600">
+                                Failed to load marketing analytics: ${message}
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
         }
 
         // Global functions for user management
@@ -1019,6 +1371,13 @@
 
         function sortUsers() {
             refreshUsers();
+        }
+
+        // Global functions for marketing analytics
+        function refreshMarketingData() {
+            if (window.dashboard) {
+                window.dashboard.loadMarketingAnalytics();
+            }
         }
 
         // Global logout function
