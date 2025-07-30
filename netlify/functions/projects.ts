@@ -217,16 +217,6 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
     try {
       console.log('Attempting to create project in Supabase...');
       
-      // Ensure user exists in database
-      let dbUser = await getUserById(user.userId);
-      if (!dbUser) {
-        dbUser = await createUser({
-          id: user.userId,
-          email: user.email,
-          name: user.email.split('@')[0], // Extract name from email
-        });
-      }
-      
       const projectData = {
         id: projectId,
         name: validatedData.name,

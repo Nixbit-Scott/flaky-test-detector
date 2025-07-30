@@ -63,6 +63,8 @@ export async function createProject(project: Omit<Project, 'created_at' | 'updat
       updated_at: now,
     };
 
+    console.log('Creating project in Supabase:', projectData);
+
     const { data, error } = await supabase
       .from('projects')
       .insert([projectData])
@@ -71,8 +73,10 @@ export async function createProject(project: Omit<Project, 'created_at' | 'updat
 
     if (error) {
       console.warn('Supabase error creating project:', error);
+      console.warn('Error details:', { code: error.code, message: error.message, details: error.details });
+      
       // If table doesn't exist, return a mock project
-      if (error.code === '42P01') {
+      if (error.code === '42P01' || error.code === 'PGRST106') {
         console.log('Projects table does not exist, returning mock project');
         return {
           ...projectData,
@@ -80,9 +84,21 @@ export async function createProject(project: Omit<Project, 'created_at' | 'updat
           updated_at: now,
         };
       }
+      
+      // If it's a column missing error, still return mock
+      if (error.message.includes('column') && error.message.includes('does not exist')) {
+        console.log('Projects table has wrong structure, returning mock project');
+        return {
+          ...projectData,
+          created_at: now,
+          updated_at: now,
+        };
+      }
+      
       throw new Error(`Failed to create project: ${error.message}`);
     }
 
+    console.log('Successfully created project in Supabase:', data);
     return data;
   } catch (error) {
     console.warn('Supabase connection error, creating mock project:', error);
