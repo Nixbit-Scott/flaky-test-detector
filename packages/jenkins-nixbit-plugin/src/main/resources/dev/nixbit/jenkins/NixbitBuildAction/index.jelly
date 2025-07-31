@@ -1,0 +1,237 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+  
+  <l:layout title="Nixbit Flaky Test Analysis" norefresh="true">
+    <st:include page="sidepanel.jelly" it="${it.run}" optional="true"/>
+    
+    <l:main-panel>
+      
+      <!-- Header -->
+      <div class="nixbit-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center;">
+          <img src="/plugin/nixbit-flaky-test-detector/images/nixbit-icon.png" alt="Nixbit" style="width: 32px; height: 32px; margin-right: 15px;"/>
+          <div>
+            <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Nixbit Flaky Test Analysis</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 14px;">
+              Build #${it.run.number} - ${it.run.timestampString}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <j:choose>
+        <j:when test="${it.hasError()}">
+          <!-- Error State -->
+          <div class="alert alert-danger" style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+            <h4 style="margin-top: 0;">
+              <i class="icon-error" style="margin-right: 8px;"/>
+              Analysis Failed
+            </h4>
+            <p style="margin-bottom: 0;">
+              ${it.errorMessage}
+            </p>
+          </div>
+        </j:when>
+        
+        <j:when test="${!it.success}">
+          <!-- Warning State -->
+          <div class="alert alert-warning" style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+            <h4 style="margin-top: 0;">
+              <i class="icon-warning" style="margin-right: 8px;"/>
+              Analysis Incomplete
+            </h4>
+            <p style="margin-bottom: 0;">
+              The Nixbit analysis could not be completed for this build. Check your configuration and API connectivity.
+            </p>
+          </div>
+        </j:when>
+        
+        <j:otherwise>
+          <!-- Success State -->
+          
+          <!-- Summary Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            
+            <!-- Flaky Tests Card -->
+            <div class="nixbit-card" style="background: white; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <div style="width: 40px; height: 40px; background: ${it.flakyTestCount > 0 ? '#dc3545' : '#28a745'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                  <span style="color: white; font-weight: bold; font-size: 18px;">${it.flakyTestCount}</span>
+                </div>
+                <div>
+                  <h3 style="margin: 0; font-size: 16px; color: #333;">Flaky Tests</h3>
+                  <p style="margin: 0; font-size: 12px; color: #666;">Tests with instability detected</p>
+                </div>
+              </div>
+              <j:if test="${it.flakyTestCount > 0}">
+                <div style="font-size: 12px; color: #dc3545; background: #f8d7da; padding: 8px; border-radius: 4px;">
+                  ⚠️ ${it.flakyTestCount} test${it.flakyTestCount > 1 ? 's' : ''} may need attention
+                </div>
+              </j:if>
+            </div>
+            
+            <!-- Stability Score Card -->
+            <div class="nixbit-card" style="background: white; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <div style="width: 40px; height: 40px; background: #17a2b8; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                  <span style="color: white; font-weight: bold; font-size: 14px;">${it.stabilityScorePercent}</span>
+                </div>
+                <div>
+                  <h3 style="margin: 0; font-size: 16px; color: #333;">Stability Score</h3>
+                  <p style="margin: 0; font-size: 12px; color: #666;">Overall test suite reliability</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Risk Level Card -->
+            <div class="nixbit-card" style="background: white; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <div class="nixbit-risk-indicator ${it.riskLevelClass}" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                  <span style="color: white; font-weight: bold; font-size: 12px;">${it.riskLevel.toUpperCase()}</span>
+                </div>
+                <div>
+                  <h3 style="margin: 0; font-size: 16px; color: #333;">Risk Level</h3>
+                  <p style="margin: 0; font-size: 12px; color: #666;">Current build stability risk</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Time Wasted Card -->
+            <div class="nixbit-card" style="background: white; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <div style="width: 40px; height: 40px; background: #ffc107; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                  <span style="color: white; font-weight: bold; font-size: 12px;">⏱️</span>
+                </div>
+                <div>
+                  <h3 style="margin: 0; font-size: 16px; color: #333;">Est. Time Wasted</h3>
+                  <p style="margin: 0; font-size: 12px; color: #666;">${it.estimatedTimeWasted}</p>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+          
+          <!-- Flaky Tests Details -->
+          <j:if test="${it.flakyTestCount > 0}">
+            <div class="nixbit-section" style="background: white; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <h2 style="margin-top: 0; color: #dc3545; display: flex; align-items: center;">
+                <i class="icon-warning" style="margin-right: 10px;"/>
+                Flaky Tests Detected (${it.flakyTestCount})
+              </h2>
+              
+              <div class="nixbit-flaky-tests">
+                <j:forEach var="flakyTest" items="${it.flakyTests}">
+                  <div style="background: #f8f9fa; border-left: 4px solid #dc3545; padding: 15px; margin-bottom: 10px; border-radius: 0 4px 4px 0;">
+                    <div style="font-family: monospace; font-weight: bold; color: #dc3545; margin-bottom: 8px;">
+                      ${flakyTest}
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                      This test has been identified as potentially flaky based on historical execution patterns.
+                    </div>
+                  </div>
+                </j:forEach>
+              </div>
+            </div>
+          </j:if>
+          
+          <!-- Retry Recommendations -->
+          <j:if test="${it.retryRecommendations.size() > 0}">
+            <div class="nixbit-section" style="background: white; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <h2 style="margin-top: 0; color: #17a2b8; display: flex; align-items: center;">
+                <i class="icon-refresh" style="margin-right: 10px;"/>
+                Retry Recommendations
+              </h2>
+              
+              <div class="nixbit-recommendations">
+                <j:forEach var="recommendation" items="${it.retryRecommendations}">
+                  <div style="background: #e7f3ff; border-left: 4px solid #17a2b8; padding: 15px; margin-bottom: 15px; border-radius: 0 4px 4px 0;">
+                    <div style="font-weight: bold; color: #0c5460; margin-bottom: 8px;">
+                      ${recommendation.testName}
+                    </div>
+                    <div style="font-size: 14px; color: #0c5460; margin-bottom: 8px;">
+                      Strategy: ${recommendation.strategy} (${recommendation.maxRetries} retries)
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                      Confidence: ${recommendation.confidence}% | Success Rate: ${recommendation.successRate}%
+                    </div>
+                  </div>
+                </j:forEach>
+              </div>
+            </div>
+          </j:if>
+          
+          <!-- General Recommendations -->
+          <j:if test="${it.hasRecommendations()}">
+            <div class="nixbit-section" style="background: white; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <h2 style="margin-top: 0; color: #28a745; display: flex; align-items: center;">
+                <i class="icon-lightbulb" style="margin-right: 10px;"/>
+                Recommendations
+              </h2>
+              
+              <ul style="margin: 0; padding-left: 20px;">
+                <j:forEach var="recommendation" items="${it.recommendations}">
+                  <li style="margin-bottom: 8px; color: #495057;">
+                    ${recommendation}
+                  </li>
+                </j:forEach>
+              </ul>
+            </div>
+          </j:if>
+          
+        </j:otherwise>
+      </j:choose>
+      
+      <!-- Footer -->
+      <div class="nixbit-footer" style="text-align: center; padding: 20px; border-top: 1px solid #e1e5e9; margin-top: 30px; color: #666; font-size: 12px;">
+        <p style="margin: 0;">
+          Powered by <a href="https://nixbit.dev" target="_blank" style="color: #667eea; text-decoration: none;">Nixbit</a> - 
+          AI-driven flaky test detection with 94% accuracy
+        </p>
+        <p style="margin: 5px 0 0 0;">
+          <a href="https://docs.nixbit.dev/jenkins" target="_blank" style="color: #667eea; text-decoration: none;">Documentation</a> | 
+          <a href="https://nixbit.dev/support" target="_blank" style="color: #667eea; text-decoration: none;">Support</a>
+        </p>
+      </div>
+      
+    </l:main-panel>
+  </l:layout>
+  
+  <!-- Custom CSS -->
+  <style>
+    .nixbit-risk-low {
+      background: #28a745 !important;
+    }
+    .nixbit-risk-medium {
+      background: #ffc107 !important;
+    }
+    .nixbit-risk-high {
+      background: #dc3545 !important;
+    }
+    .nixbit-risk-unknown {
+      background: #6c757d !important;
+    }
+    
+    .nixbit-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+      transition: all 0.2s ease;
+    }
+    
+    .nixbit-section {
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    @media (max-width: 768px) {
+      .nixbit-header > div {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .nixbit-header img {
+        margin-right: 0;
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+  
+</j:jelly>

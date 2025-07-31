@@ -1,0 +1,52 @@
+{
+  "name": "jest-nixbit-reporter",
+  "version": "1.0.0",
+  "description": "Jest custom reporter for integrating test results with Nixbit flaky test detection platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "jest",
+    "reporter",
+    "flaky-tests",
+    "nixbit",
+    "testing",
+    "ci-cd",
+    "continuous-integration"
+  ],
+  "author": "Nixbit <support@nixbit.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nixbit/jest-nixbit-reporter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nixbit/jest-nixbit-reporter/issues"
+  },
+  "homepage": "https://nixbit.dev",
+  "peerDependencies": {
+    "jest": ">=27.0.0",
+    "@jest/types": ">=27.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.0"
+  },
+  "devDependencies": {
+    "@jest/types": "^29.6.0",
+    "@types/node": "^20.8.0",
+    "jest": "^29.7.0",
+    "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

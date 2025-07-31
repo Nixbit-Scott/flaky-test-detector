@@ -1,0 +1,157 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+  
+  <!-- Summary widget for build page sidebar -->
+  <j:choose>
+    <j:when test="${it.hasError()}">
+      <!-- Error Summary -->
+      <div class="nixbit-summary-widget" style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px; padding: 12px; margin: 10px 0;">
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+          <img src="/plugin/nixbit-flaky-test-detector/images/nixbit-icon.png" alt="Nixbit" style="width: 16px; height: 16px; margin-right: 8px;"/>
+          <span style="font-weight: bold; color: #721c24;">Nixbit Analysis Failed</span>
+        </div>
+        <div style="font-size: 12px; color: #721c24;">
+          ${it.errorMessage}
+        </div>
+        <div style="margin-top: 8px;">
+          <a href="${it.urlName}" style="color: #721c24; text-decoration: none; font-size: 11px;">
+            View Details →
+          </a>
+        </div>
+      </div>
+    </j:when>
+    
+    <j:when test="${!it.success}">
+      <!-- Warning Summary -->
+      <div class="nixbit-summary-widget" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 12px; margin: 10px 0;">
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+          <img src="/plugin/nixbit-flaky-test-detector/images/nixbit-icon.png" alt="Nixbit" style="width: 16px; height: 16px; margin-right: 8px;"/>
+          <span style="font-weight: bold; color: #856404;">Nixbit Analysis Incomplete</span>
+        </div>
+        <div style="font-size: 11px; color: #856404; margin-bottom: 8px;">
+          Check configuration and connectivity
+        </div>
+        <div>
+          <a href="${it.urlName}" style="color: #856404; text-decoration: none; font-size: 11px;">
+            View Details →
+          </a>
+        </div>
+      </div>
+    </j:when>
+    
+    <j:otherwise>
+      <!-- Success Summary -->
+      <div class="nixbit-summary-widget" style="background: white; border: 1px solid #e1e5e9; border-radius: 6px; padding: 12px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+          <img src="/plugin/nixbit-flaky-test-detector/images/nixbit-icon.png" alt="Nixbit" style="width: 16px; height: 16px; margin-right: 8px;"/>
+          <span style="font-weight: bold; color: #333; font-size: 13px;">Nixbit Analysis</span>
+        </div>
+        
+        <!-- Key Metrics -->
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          
+          <!-- Flaky Tests -->
+          <div style="text-align: center; flex: 1;">
+            <div style="font-size: 18px; font-weight: bold; color: ${it.flakyTestCount > 0 ? '#dc3545' : '#28a745'};">
+              ${it.flakyTestCount}
+            </div>
+            <div style="font-size: 10px; color: #666; line-height: 1.2;">
+              Flaky<br/>Tests
+            </div>
+          </div>
+          
+          <!-- Stability Score -->
+          <div style="text-align: center; flex: 1; border-left: 1px solid #e1e5e9; border-right: 1px solid #e1e5e9;">
+            <div style="font-size: 18px; font-weight: bold; color: #17a2b8;">
+              ${it.stabilityScorePercent}
+            </div>
+            <div style="font-size: 10px; color: #666; line-height: 1.2;">
+              Stability<br/>Score
+            </div>
+          </div>
+          
+          <!-- Risk Level -->
+          <div style="text-align: center; flex: 1;">
+            <div class="nixbit-risk-badge ${it.riskLevelClass}" style="display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: bold; color: white; text-transform: uppercase;">
+              ${it.riskLevel}
+            </div>
+            <div style="font-size: 10px; color: #666; line-height: 1.2; margin-top: 2px;">
+              Risk<br/>Level
+            </div>
+          </div>
+          
+        </div>
+        
+        <!-- Flaky Tests Alert -->
+        <j:if test="${it.flakyTestCount > 0}">
+          <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; padding: 8px; margin-bottom: 10px;">
+            <div style="font-size: 11px; color: #721c24; font-weight: bold; margin-bottom: 4px;">
+              ⚠️ ${it.flakyTestCount} Flaky Test${it.flakyTestCount > 1 ? 's' : ''} Detected
+            </div>
+            <div style="font-size: 10px; color: #721c24;">
+              <j:forEach var="flakyTest" items="${it.flakyTests}" begin="0" end="2">
+                <div style="font-family: monospace; margin: 2px 0;">
+                  ${flakyTest.length() > 30 ? flakyTest.substring(0, 27) + '...' : flakyTest}
+                </div>
+              </j:forEach>
+              <j:if test="${it.flakyTests.size() > 3}">
+                <div style="font-style: italic; color: #856404;">
+                  ... and ${it.flakyTests.size() - 3} more
+                </div>
+              </j:if>
+            </div>
+          </div>
+        </j:if>
+        
+        <!-- Time Wasted -->
+        <j:if test="${it.estimatedTimeWasted != 'N/A'}">
+          <div style="font-size: 11px; color: #666; margin-bottom: 10px; text-align: center;">
+            <strong>Est. Time Wasted:</strong> ${it.estimatedTimeWasted}
+          </div>
+        </j:if>
+        
+        <!-- Retry Recommendations Badge -->
+        <j:if test="${it.retryRecommendations.size() > 0}">
+          <div style="background: #e7f3ff; border: 1px solid #b8daff; border-radius: 4px; padding: 6px; margin-bottom: 10px; text-align: center;">
+            <div style="font-size: 10px; color: #0c5460; font-weight: bold;">
+              🔄 ${it.retryRecommendations.size()} Retry Recommendation${it.retryRecommendations.size() > 1 ? 's' : ''}
+            </div>
+          </div>
+        </j:if>
+        
+        <!-- View Details Link -->
+        <div style="text-align: center; border-top: 1px solid #e1e5e9; padding-top: 8px;">
+          <a href="${it.urlName}" style="color: #667eea; text-decoration: none; font-size: 11px; font-weight: bold;">
+            View Full Analysis →
+          </a>
+        </div>
+        
+      </div>
+    </j:otherwise>
+  </j:choose>
+  
+  <!-- Custom CSS for summary widget -->
+  <style>
+    .nixbit-risk-low {
+      background: #28a745 !important;
+    }
+    .nixbit-risk-medium {
+      background: #ffc107 !important;
+    }
+    .nixbit-risk-high {
+      background: #dc3545 !important;
+    }
+    .nixbit-risk-unknown {
+      background: #6c757d !important;
+    }
+    
+    .nixbit-summary-widget:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+      transition: all 0.2s ease;
+    }
+  </style>
+  
+</j:jelly>

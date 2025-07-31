@@ -1,0 +1,443 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.42">
+  <actions/>
+  <description>Sample Pipeline job for testing Nixbit Jenkins plugin with comprehensive flaky test scenarios</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <hudson.plugins.buildblocker.BuildBlockerProperty plugin="build-blocker-plugin@1.7.8">
+      <useBuildBlocker>false</useBuildBlocker>
+      <blockLevel>GLOBAL</blockLevel>
+      <scanQueueFor>DISABLED</scanQueueFor>
+      <blockingJobs></blockingJobs>
+    </hudson.plugins.buildblocker.BuildBlockerProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <!-- Periodic builds for consistent flaky test detection -->
+        <hudson.triggers.TimerTrigger>
+          <spec>H H(0-3) * * *</spec>
+        </hudson.triggers.TimerTrigger>
+        
+        <!-- SCM polling -->
+        <hudson.triggers.SCMTrigger>
+          <spec>H/10 * * * *</spec>
+          <ignorePostCommitHooks>false</ignorePostCommitHooks>
+        </hudson.triggers.SCMTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+    
+    <!-- Pipeline parameters -->
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>FLAKY_FACTOR</name>
+          <description>Flakiness factor for tests (0.0 = stable, 1.0 = always fail)</description>
+          <defaultValue>0.3</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        
+        <hudson.model.BooleanParameterDefinition>
+          <name>ENABLE_FLAKY_TESTS</name>
+          <description>Enable intentionally flaky tests for plugin testing</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        
+        <hudson.model.ChoiceParameterDefinition>
+          <name>TEST_PROFILE</name>
+          <description>Test execution profile</description>
+          <choices>
+            <string>standard</string>
+            <string>flaky-tests</string>
+            <string>stable-tests</string>
+            <string>stress-test</string>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        
+        <hudson.model.StringParameterDefinition>
+          <name>NIXBIT_PROJECT_ID</name>
+          <description>Nixbit project identifier</description>
+          <defaultValue>sample-java-maven-pipeline</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  
+  <!-- Build retention -->
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>30</daysToKeep>
+    <numToKeep>50</numToKeep>
+    <artifactDaysToKeep>14</artifactDaysToKeep>
+    <artifactNumToKeep>20</artifactNumToKeep>
+  </logRotator>
+  
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.92">
+    <script><![CDATA[
+pipeline {
+    agent any
+    
+    options {
+        // Build timeout
+        timeout(time: 20, unit: 'MINUTES')
+        
+        // Keep builds for analysis
+        buildDiscarder(logRotator(numToKeepStr: '50', daysToKeepStr: '30'))
+        
+        // Skip default checkout
+        skipDefaultCheckout(false)
+        
+        // Retry on failure (for testing retry logic)
+        retry(1)
+    }
+    
+    environment {
+        // Maven configuration
+        MAVEN_ARGS = '-Dmaven.test.failure.ignore=true -Dtest.flaky.enabled=${ENABLE_FLAKY_TESTS}'
+        MAVEN_OPTS = '-Xmx1024m -XX:MaxPermSize=256m'
+        
+        // Test configuration
+        TEST_FLAKY_FACTOR = "${params.FLAKY_FACTOR}"
+        TEST_TIMING_SENSITIVE = "${params.ENABLE_FLAKY_TESTS}"
+        
+        // Nixbit configuration
+        NIXBIT_API_URL = 'https://nixbit.dev/api'
+        NIXBIT_PROJECT_ID = "${params.NIXBIT_PROJECT_ID}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out source code...'
+                checkout scm
+                
+                script {
+                    // Display build parameters for debugging
+                    echo "Build Parameters:"
+                    echo "  FLAKY_FACTOR: ${params.FLAKY_FACTOR}"
+                    echo "  ENABLE_FLAKY_TESTS: ${params.ENABLE_FLAKY_TESTS}"
+                    echo "  TEST_PROFILE: ${params.TEST_PROFILE}"
+                    echo "  NIXBIT_PROJECT_ID: ${params.NIXBIT_PROJECT_ID}"
+                }
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo '🔨 Building application...'
+                
+                script {
+                    if (isUnix()) {
+                        sh 'mvn clean compile -DskipTests'
+                    } else {
+                        bat 'mvn clean compile -DskipTests'
+                    }
+                }
+            }
+            post {
+                failure {
+                    echo '❌ Build failed'
+                }
+            }
+        }
+        
+        stage('Unit Tests') {
+            when {
+                anyOf {
+                    expression { params.TEST_PROFILE == 'standard' }
+                    expression { params.TEST_PROFILE == 'flaky-tests' }
+                    expression { params.TEST_PROFILE == 'stress-test' }
+                }
+            }
+            steps {
+                echo '🧪 Running unit tests...'
+                
+                script {
+                    def testCommand = "mvn test ${MAVEN_ARGS} -Dtest.flaky.factor=${TEST_FLAKY_FACTOR}"
+                    
+                    if (params.TEST_PROFILE == 'stress-test') {
+                        testCommand += ' -Dtest.parallel.threads=8 -Dtest.repeat.count=3'
+                    }
+                    
+                    if (isUnix()) {
+                        sh testCommand
+                    } else {
+                        bat testCommand
+                    }
+                }
+            }
+            post {
+                always {
+                    // Standard Jenkins test results
+                    junit(
+                        testResults: '**/target/surefire-reports/TEST-*.xml',
+                        allowEmptyResults: true,
+                        healthScaleFactor: 1.0
+                    )
+                    
+                    // Nixbit flaky test analysis
+                    script {
+                        def nixbitResponse = nixbitAnalysis(
+                            apiKey: credentials('nixbit-api-key'),
+                            projectId: env.NIXBIT_PROJECT_ID,
+                            testReportPattern: '**/target/surefire-reports/TEST-*.xml',
+                            enableRetryLogic: params.ENABLE_FLAKY_TESTS.toBoolean(),
+                            maxRetries: params.TEST_PROFILE == 'stress-test' ? 5 : 3,
+                            debugMode: true
+                        )
+                        
+                        // Store analysis results for downstream use
+                        if (nixbitResponse) {
+                            env.NIXBIT_FLAKY_COUNT = nixbitResponse.flakyTests?.size() ?: 0
+                            env.NIXBIT_STABILITY_SCORE = nixbitResponse.analytics?.stabilityScore ?: 0
+                            
+                            echo "Unit Test Analysis Results:"
+                            echo "  Flaky Tests: ${env.NIXBIT_FLAKY_COUNT}"
+                            echo "  Stability Score: ${env.NIXBIT_STABILITY_SCORE}"
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Integration Tests') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                    changeRequest()
+                    expression { params.TEST_PROFILE == 'flaky-tests' }
+                    expression { params.TEST_PROFILE == 'stress-test' }
+                }
+            }
+            steps {
+                echo '🔗 Running integration tests...'
+                
+                script {
+                    def integrationCommand = "mvn verify ${MAVEN_ARGS} -Dtest.integration.timeout=30000"
+                    
+                    if (params.TEST_PROFILE == 'stress-test') {
+                        integrationCommand += ' -Dtest.load.threads=4 -Dtest.concurrent.executions=true'
+                    }
+                    
+                    if (isUnix()) {
+                        sh integrationCommand
+                    } else {
+                        bat integrationCommand
+                    }
+                }
+            }
+            post {
+                always {
+                    // Integration test results
+                    junit(
+                        testResults: '**/target/failsafe-reports/TEST-*.xml',
+                        allowEmptyResults: true
+                    )
+                    
+                    // Advanced Nixbit analysis for integration tests
+                    script {
+                        def nixbitResponse = nixbitAnalysis(
+                            apiUrl: env.NIXBIT_API_URL,
+                            apiKey: credentials('nixbit-api-key'),
+                            projectId: env.NIXBIT_PROJECT_ID + '-integration',
+                            testReportPattern: '**/target/surefire-reports/TEST-*.xml,**/target/failsafe-reports/TEST-*.xml',
+                            enableRetryLogic: true,
+                            maxRetries: 5,
+                            debugMode: env.BRANCH_NAME != 'main'
+                        )
+                        
+                        if (nixbitResponse && nixbitResponse.flakyTests && nixbitResponse.flakyTests.size() > 0) {
+                            echo "⚠️  Integration tests showing instability:"
+                            nixbitResponse.flakyTests.each { test ->
+                                echo "   - ${test}"
+                            }
+                            
+                            // Set build status based on flaky test count
+                            if (nixbitResponse.flakyTests.size() > 5) {
+                                currentBuild.result = 'UNSTABLE'
+                                echo "🔴 Build marked as UNSTABLE due to high flaky test count"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Performance Tests') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { params.TEST_PROFILE == 'stress-test' }
+                }
+            }
+            steps {
+                echo '⚡ Running performance tests...'
+                
+                script {
+                    if (isUnix()) {
+                        sh 'mvn test -Dtest=**/*PerformanceTest.java -Dtest.performance.iterations=10'
+                    } else {
+                        bat 'mvn test -Dtest=**/*PerformanceTest.java -Dtest.performance.iterations=10'
+                    }
+                }
+            }
+            post {
+                always {
+                    // Performance test specific analysis
+                    script {
+                        def response = nixbitAnalysis(
+                            apiKey: credentials('nixbit-api-key'),
+                            projectId: env.NIXBIT_PROJECT_ID + '-performance',
+                            testReportPattern: '**/target/surefire-reports/TEST-*PerformanceTest.xml',
+                            enableRetryLogic: false, // Don't retry performance tests
+                            maxRetries: 1,
+                            debugMode: true
+                        )
+                        
+                        if (response && response.analytics) {
+                            echo "Performance Test Analysis:"
+                            echo "  Risk Level: ${response.analytics.riskLevel}"
+                            echo "  Estimated Time Wasted: ${response.analytics.estimatedTimeWasted} minutes"
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Flaky Test Report') {
+            when {
+                expression { env.NIXBIT_FLAKY_COUNT && env.NIXBIT_FLAKY_COUNT.toInteger() > 0 }
+            }
+            steps {
+                echo '📊 Generating flaky test report...'
+                
+                script {
+                    // Create summary report
+                    def reportContent = """
+# Flaky Test Detection Report
+
+Build: ${env.BUILD_NUMBER}  
+Branch: ${env.BRANCH_NAME}  
+Timestamp: ${new Date()}
+
+## Summary
+- **Flaky Tests Detected**: ${env.NIXBIT_FLAKY_COUNT}
+- **Stability Score**: ${env.NIXBIT_STABILITY_SCORE}
+- **Test Profile**: ${params.TEST_PROFILE}
+- **Flaky Factor**: ${params.FLAKY_FACTOR}
+
+## Recommendations
+1. Review identified flaky tests
+2. Consider implementing retry logic for affected tests
+3. Investigate timing-sensitive test conditions
+4. Monitor test stability trends over time
+
+## Next Steps
+- Check Nixbit dashboard for detailed analysis
+- Consider adjusting test timeouts or retry strategies
+- Review test environment consistency
+"""
+                    
+                    writeFile file: 'flaky-test-report.md', text: reportContent
+                    
+                    echo "📋 Flaky test report generated"
+                    echo "   Flaky tests found: ${env.NIXBIT_FLAKY_COUNT}"
+                    echo "   Stability score: ${env.NIXBIT_STABILITY_SCORE}"
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'flaky-test-report.md', fingerprint: true
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo '📊 Build completed - archiving results...'
+            
+            // Archive test reports and artifacts
+            archiveArtifacts(
+                artifacts: '**/target/surefire-reports/**,**/target/failsafe-reports/**,target/*.jar',
+                allowEmptyArchive: true,
+                fingerprint: false
+            )
+            
+            // Clean up workspace conditionally
+            script {
+                if (currentBuild.result != 'FAILURE') {
+                    cleanWs(
+                        cleanWhenNotBuilt: false,
+                        cleanWhenSuccess: true,
+                        cleanWhenUnstable: false,
+                        cleanWhenFailure: false
+                    )
+                }
+            }
+        }
+        
+        success {
+            echo '✅ Build succeeded!'
+            
+            script {
+                if (env.BRANCH_NAME == 'main') {
+                    echo '🎉 Main branch build successful'
+                    
+                    // Notify success with flaky test summary
+                    if (env.NIXBIT_FLAKY_COUNT && env.NIXBIT_FLAKY_COUNT.toInteger() > 0) {
+                        echo "⚠️  Note: ${env.NIXBIT_FLAKY_COUNT} flaky tests detected"
+                    }
+                }
+            }
+        }
+        
+        failure {
+            echo '❌ Build failed!'
+            
+            script {
+                // Enhanced failure analysis with Nixbit data
+                def buildAction = currentBuild.getAction(dev.nixbit.jenkins.NixbitBuildAction.class)
+                if (buildAction && buildAction.flakyTestCount > 0) {
+                    echo "🔍 Failure analysis:"
+                    echo "   Flaky tests detected: ${buildAction.flakyTestCount}"
+                    echo "   Stability score: ${buildAction.stabilityScorePercent}"
+                    echo "   Risk level: ${buildAction.riskLevel}"
+                    echo "   Consider reviewing flaky test patterns in Nixbit dashboard"
+                }
+            }
+        }
+        
+        unstable {
+            echo '⚠️ Build unstable - likely test failures'
+            
+            script {
+                echo '🔄 Flaky test recommendations:'
+                echo '   1. Review Nixbit analysis results'
+                echo '   2. Consider enabling retry logic for identified flaky tests'
+                echo '   3. Check test environment consistency'
+                echo '   4. Monitor test stability trends'
+            }
+        }
+        
+        cleanup {
+            // Final cleanup and reporting
+            script {
+                if (env.NIXBIT_FLAKY_COUNT) {
+                    echo "📈 Final test stability metrics:"
+                    echo "   Total flaky tests: ${env.NIXBIT_FLAKY_COUNT}"
+                    echo "   Stability score: ${env.NIXBIT_STABILITY_SCORE}"
+                    echo "   Build result: ${currentBuild.result ?: 'SUCCESS'}"
+                }
+            }
+        }
+    }
+}
+    ]]></script>
+    <sandbox>true</sandbox>
+  </definition>
+  
+  <!-- Enable concurrent builds -->
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

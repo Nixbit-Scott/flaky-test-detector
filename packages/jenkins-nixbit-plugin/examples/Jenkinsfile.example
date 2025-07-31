@@ -1,0 +1,260 @@
+// Nixbit Jenkins Plugin - Complete Pipeline Example
+// This Jenkinsfile demonstrates various ways to integrate Nixbit flaky test detection
+
+pipeline {
+    agent any
+    
+    environment {
+        // Nixbit configuration
+        NIXBIT_API_URL = 'https://nixbit.dev/api'
+        NIXBIT_PROJECT_ID = 'your-project-id-here'
+        
+        // Maven configuration
+        MAVEN_ARGS = '-Dmaven.test.failure.ignore=true'
+    }
+    
+    options {
+        // Keep builds for analysis
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        
+        // Timeout for safety
+        timeout(time: 30, unit: 'MINUTES')
+        
+        // Workspace cleanup
+        skipDefaultCheckout(false)
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out source code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo '🔨 Building application...'
+                
+                script {
+                    if (isUnix()) {
+                        sh 'mvn clean compile -DskipTests'
+                    } else {
+                        bat 'mvn clean compile -DskipTests'
+                    }
+                }
+            }
+        }
+        
+        stage('Unit Tests') {
+            steps {
+                echo '🧪 Running unit tests...'
+                
+                script {
+                    if (isUnix()) {
+                        sh "mvn test ${MAVEN_ARGS}"
+                    } else {
+                        bat "mvn test ${MAVEN_ARGS}"
+                    }
+                }
+            }
+            post {
+                always {
+                    // Standard Jenkins test results
+                    junit(
+                        testResults: '**/target/surefire-reports/TEST-*.xml',
+                        allowEmptyResults: true,
+                        healthScaleFactor: 1.0
+                    )
+                    
+                    // Basic Nixbit analysis
+                    nixbitAnalysis(
+                        apiKey: credentials('nixbit-api-key'),
+                        projectId: env.NIXBIT_PROJECT_ID,
+                        testReportPattern: '**/target/surefire-reports/TEST-*.xml'
+                    )
+                }
+            }
+        }
+        
+        stage('Integration Tests') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                    changeRequest()
+                }
+            }
+            steps {
+                echo '🔗 Running integration tests...'
+                
+                script {
+                    if (isUnix()) {
+                        sh "mvn verify ${MAVEN_ARGS} -Dtest=**/*IT.java"
+                    } else {
+                        bat "mvn verify ${MAVEN_ARGS} -Dtest=**/*IT.java"
+                    }
+                }
+            }
+            post {
+                always {
+                    // Integration test results
+                    junit(
+                        testResults: '**/target/failsafe-reports/TEST-*.xml',
+                        allowEmptyResults: true
+                    )
+                    
+                    // Advanced Nixbit analysis with retry logic
+                    nixbitAnalysis(
+                        apiUrl: env.NIXBIT_API_URL,
+                        apiKey: credentials('nixbit-api-key'),
+                        projectId: env.NIXBIT_PROJECT_ID,
+                        testReportPattern: '**/target/surefire-reports/TEST-*.xml,**/target/failsafe-reports/TEST-*.xml',
+                        enableRetryLogic: true,
+                        maxRetries: 5,
+                        debugMode: env.BRANCH_NAME != 'main' // Debug on non-main branches
+                    )
+                }
+            }
+        }
+        
+        stage('Performance Tests') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo '⚡ Running performance tests...'
+                
+                script {
+                    if (isUnix()) {
+                        sh 'mvn test -Dtest=**/*PerformanceTest.java'
+                    } else {
+                        bat 'mvn test -Dtest=**/*PerformanceTest.java'
+                    }
+                }
+            }
+            post {
+                always {
+                    // Performance test specific analysis
+                    script {
+                        def response = nixbitAnalysis(
+                            apiKey: credentials('nixbit-api-key'),
+                            projectId: env.NIXBIT_PROJECT_ID,
+                            testReportPattern: '**/target/surefire-reports/TEST-*PerformanceTest.xml',
+                            enableRetryLogic: false, // Don't retry performance tests
+                            debugMode: true
+                        )
+                        
+                        // Custom logic based on analysis results
+                        if (response && response.flakyTests && response.flakyTests.size() > 0) {
+                            echo "⚠️  Performance tests showing instability:"
+                            response.flakyTests.each { test ->
+                                echo "   - ${test}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo '📊 Build completed - checking results...'
+            
+            // Archive test reports
+            archiveArtifacts(
+                artifacts: '**/target/surefire-reports/**,**/target/failsafe-reports/**',
+                allowEmptyArchive: true
+            )
+            
+            // Clean up workspace on success
+            cleanWs(cleanWhenNotBuilt: false,
+                   cleanWhenSuccess: true,
+                   cleanWhenUnstable: false,
+                   cleanWhenFailure: false)
+        }
+        
+        success {
+            echo '✅ Build succeeded!'
+            
+            // Notify on main branch success
+            script {
+                if (env.BRANCH_NAME == 'main') {
+                    // Custom notification logic here
+                    echo '🎉 Main branch build successful - ready for deployment'
+                }
+            }
+        }
+        
+        failure {
+            echo '❌ Build failed!'
+            
+            // Enhanced failure analysis
+            script {
+                def buildAction = currentBuild.getAction(dev.nixbit.jenkins.NixbitBuildAction.class)
+                if (buildAction && buildAction.flakyTestCount > 0) {
+                    echo "🔍 Failure may be related to ${buildAction.flakyTestCount} flaky tests"
+                    echo "📈 Stability score: ${buildAction.stabilityScorePercent}"
+                    echo "⚠️  Risk level: ${buildAction.riskLevel}"
+                }
+            }
+        }
+        
+        unstable {
+            echo '⚠️ Build unstable - likely test failures'
+            
+            // Specific handling for unstable builds
+            script {
+                echo '🔄 Consider reviewing flaky test recommendations in build results'
+            }
+        }
+    }
+}
+
+// Helper function for conditional retry logic
+def shouldRetryTests() {
+    // Custom logic to determine if tests should be retried
+    // Based on branch, time of day, previous build history, etc.
+    
+    if (env.BRANCH_NAME == 'main') {
+        return true  // Always retry on main branch
+    }
+    
+    if (env.CHANGE_ID) {
+        return true  // Retry for pull requests
+    }
+    
+    return false  // Skip retries for feature branches
+}
+
+// Advanced example with conditional Nixbit analysis
+def performAdvancedAnalysis() {
+    script {
+        // Get current build info
+        def buildNumber = env.BUILD_NUMBER as Integer
+        def isNightlyBuild = env.BUILD_CAUSE?.contains('TimerTrigger')
+        
+        // Configure analysis based on build context
+        def analysisConfig = [
+            apiKey: credentials('nixbit-api-key'),
+            projectId: env.NIXBIT_PROJECT_ID,
+            testReportPattern: '**/target/**-reports/TEST-*.xml',
+            enableRetryLogic: shouldRetryTests(),
+            maxRetries: isNightlyBuild ? 10 : 3,  // More retries for nightly builds
+            debugMode: buildNumber % 10 == 0       // Debug every 10th build
+        ]
+        
+        // Perform analysis
+        def response = nixbitAnalysis(analysisConfig)
+        
+        // Store results for downstream jobs
+        if (response) {
+            env.NIXBIT_FLAKY_COUNT = response.flakyTests?.size() ?: 0
+            env.NIXBIT_STABILITY_SCORE = response.analytics?.stabilityScore ?: 0
+            env.NIXBIT_RISK_LEVEL = response.analytics?.riskLevel ?: 'unknown'
+        }
+        
+        return response
+    }
+}

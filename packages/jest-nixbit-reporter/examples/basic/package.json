@@ -1,0 +1,24 @@
+{
+  "name": "jest-nixbit-reporter-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Example usage of jest-nixbit-reporter",
+  "scripts": {
+    "test": "jest",
+    "test:debug": "NIXBIT_DEBUG=true jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-nixbit-reporter": "file:../.."
+  },
+  "jest": {
+    "reporters": [
+      "default",
+      ["jest-nixbit-reporter", {
+        "testSuiteName": "Example Test Suite",
+        "debug": true,
+        "failSilently": true
+      }]
+    ]
+  }
+}

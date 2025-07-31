@@ -1,0 +1,78 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+  
+  <f:section title="Nixbit Configuration">
+    
+    <f:entry title="API URL" field="apiUrl" description="Nixbit API endpoint URL">
+      <f:textbox default="https://nixbit.dev/api"/>
+    </f:entry>
+    
+    <f:entry title="API Key" field="apiKey" description="Your Nixbit API key (get it from your dashboard)">
+      <f:password/>
+    </f:entry>
+    
+    <f:entry title="Project ID" field="projectId" description="Your project ID in Nixbit">
+      <f:textbox/>
+    </f:entry>
+    
+    <f:validateButton title="Test Connection" progress="Testing..." method="testConnection" with="apiUrl,apiKey"/>
+    
+  </f:section>
+  
+  <f:section title="Test Report Configuration">
+    
+    <f:entry title="Test Report Pattern" field="testReportPattern" 
+             description="Ant-style pattern for test report files (comma-separated for multiple patterns)">
+      <f:textbox default="**/target/surefire-reports/TEST-*.xml,**/build/test-results/test/TEST-*.xml"/>
+    </f:entry>
+    
+  </f:section>
+  
+  <f:section title="Retry Logic">
+    
+    <f:entry title="Enable Retry Logic" field="enableRetryLogic" 
+             description="Enable intelligent retry recommendations for flaky tests">
+      <f:checkbox default="true"/>
+    </f:entry>
+    
+    <f:entry title="Max Retries" field="maxRetries" 
+             description="Maximum number of retries for flaky tests (1-10)">
+      <f:number clazz="positive-number" min="1" max="10" default="3"/>
+    </f:entry>
+    
+  </f:section>
+  
+  <f:section title="Advanced Options">
+    
+    <f:entry title="Debug Mode" field="debugMode" 
+             description="Enable detailed logging for troubleshooting">
+      <f:checkbox default="false"/>
+    </f:entry>
+    
+  </f:section>
+  
+  <f:block>
+    <div class="nixbit-info-panel" style="background: #f0f8ff; border: 1px solid #d1ecf1; border-radius: 4px; padding: 15px; margin: 10px 0;">
+      <h4 style="color: #0c5460; margin-top: 0;">
+        <img src="/plugin/nixbit-flaky-test-detector/images/nixbit-icon.png" alt="Nixbit" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;"/>
+        Nixbit Flaky Test Detection
+      </h4>
+      <p style="margin: 5px 0; color: #0c5460;">
+        AI-powered flaky test detection with 94% accuracy. Automatically identifies unreliable tests 
+        and provides intelligent retry recommendations to improve your CI/CD reliability.
+      </p>
+      <ul style="margin: 10px 0; padding-left: 20px; color: #0c5460;">
+        <li>Real-time flaky test detection and analytics</li>
+        <li>Intelligent retry logic with success rate tracking</li>
+        <li>Cross-pipeline test stability insights</li>
+        <li>Enterprise-grade reporting and notifications</li>
+      </ul>
+      <p style="margin: 10px 0 0 0; font-size: 12px; color: #6c757d;">
+        <a href="https://nixbit.dev" target="_blank" style="color: #007bff;">Learn more about Nixbit</a> | 
+        <a href="https://docs.nixbit.dev/jenkins" target="_blank" style="color: #007bff;">Documentation</a> | 
+        <a href="https://nixbit.dev/support" target="_blank" style="color: #007bff;">Support</a>
+      </p>
+    </div>
+  </f:block>
+  
+</j:jelly>

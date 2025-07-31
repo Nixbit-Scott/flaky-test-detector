@@ -1,0 +1,133 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Sample Freestyle job for testing Nixbit Jenkins plugin with intentionally flaky tests</description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  
+  <!-- Source Code Management -->
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.8.3">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>https://github.com/your-org/sample-java-maven.git</url>
+        <credentialsId>github-credentials</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/main</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <extensions/>
+  </scm>
+  
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  
+  <!-- Build Triggers -->
+  <triggers>
+    <!-- Poll SCM every 5 minutes -->
+    <hudson.triggers.SCMTrigger>
+      <spec>H/5 * * * *</spec>
+      <ignorePostCommitHooks>false</ignorePostCommitHooks>
+    </hudson.triggers.SCMTrigger>
+    
+    <!-- Periodic build for flaky test detection -->
+    <hudson.triggers.TimerTrigger>
+      <spec>H 2 * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  
+  <concurrentBuild>false</concurrentBuild>
+  
+  <!-- Build Steps -->
+  <builders>
+    <!-- Clean and compile -->
+    <hudson.tasks.Maven>
+      <targets>clean compile</targets>
+      <mavenName>Maven-3.9</mavenName>
+      <pom>pom.xml</pom>
+      <usePrivateRepository>false</usePrivateRepository>
+    </hudson.tasks.Maven>
+    
+    <!-- Run tests with flaky configuration -->
+    <hudson.tasks.Maven>
+      <targets>test -Dtest.flaky.enabled=true -Dtest.flaky.factor=0.3</targets>
+      <mavenName>Maven-3.9</mavenName>
+      <pom>pom.xml</pom>
+      <usePrivateRepository>false</usePrivateRepository>
+    </hudson.tasks.Maven>
+    
+    <!-- Run integration tests -->
+    <hudson.tasks.Maven>
+      <targets>verify -Dtest.integration.timeout=30000 -Dtest.flaky.factor=0.25</targets>
+      <mavenName>Maven-3.9</mavenName>
+      <pom>pom.xml</pom>
+      <usePrivateRepository>false</usePrivateRepository>
+    </hudson.tasks.Maven>
+  </builders>
+  
+  <!-- Post-build Actions -->
+  <publishers>
+    <!-- Standard JUnit test results -->
+    <hudson.tasks.junit.JUnitResultArchiver>
+      <testResults>**/target/surefire-reports/TEST-*.xml,**/target/failsafe-reports/TEST-*.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <healthScaleFactor>1.0</healthScaleFactor>
+      <allowEmptyResults>false</allowEmptyResults>
+    </hudson.tasks.junit.JUnitResultArchiver>
+    
+    <!-- Nixbit Flaky Test Detector Plugin -->
+    <dev.nixbit.jenkins.NixbitFlakyTestDetectorPlugin>
+      <apiUrl>https://nixbit.dev/api</apiUrl>
+      <apiKey>${NIXBIT_API_KEY}</apiKey>
+      <projectId>sample-java-maven-freestyle</projectId>
+      <testReportPattern>**/target/surefire-reports/TEST-*.xml,**/target/failsafe-reports/TEST-*.xml</testReportPattern>
+      <enableRetryLogic>true</enableRetryLogic>
+      <maxRetries>3</maxRetries>
+      <debugMode>true</debugMode>
+    </dev.nixbit.jenkins.NixbitFlakyTestDetectorPlugin>
+    
+    <!-- Archive artifacts -->
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>target/*.jar,**/target/surefire-reports/**,**/target/failsafe-reports/**</artifacts>
+      <allowEmptyArchive>true</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+      <caseSensitive>true</caseSensitive>
+    </hudson.tasks.ArtifactArchiver>
+    
+    <!-- Email notification on failure -->
+    <hudson.tasks.Mailer>
+      <recipients>dev-team@company.com</recipients>
+      <dontNotifyEveryUnstableBuild>true</dontNotifyEveryUnstableBuild>
+      <sendToIndividuals>false</sendToIndividuals>
+    </hudson.tasks.Mailer>
+  </publishers>
+  
+  <!-- Build Wrappers -->
+  <buildWrappers>
+    <!-- Timeout wrapper -->
+    <hudson.plugins.build__timeout.BuildTimeoutWrapper>
+      <strategy class="hudson.plugins.build__timeout.impl.AbsoluteTimeOutStrategy">
+        <timeoutMinutes>15</timeoutMinutes>
+      </strategy>
+      <operationList/>
+    </hudson.plugins.build__timeout.BuildTimeoutWrapper>
+    
+    <!-- Credentials binding for API key -->
+    <org.jenkinsci.plugins.credentialsbinding.impl.SecretBuildWrapper>
+      <bindings>
+        <org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+          <credentialsId>nixbit-api-key</credentialsId>
+          <variable>NIXBIT_API_KEY</variable>
+        </org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+      </bindings>
+    </org.jenkinsci.plugins.credentialsbinding.impl.SecretBuildWrapper>
+  </buildWrappers>
+</project>

@@ -17,6 +17,7 @@ import testResultRoutes from './api/test-results';
 import webhookRoutes from './api/webhooks';
 import githubWebhookRoutes from './api/github-webhooks';
 import githubIntegrationRoutes from './api/github-integration';
+import gitlabIntegrationRoutes from './api/gitlab-integration';
 import analyticsRoutes from './api/analytics';
 import flakyTestRoutes from './api/flaky-tests';
 import retryLogicRoutes from './api/retry-logic';
@@ -104,6 +105,7 @@ app.use('/api/invitations', invitationRoutes); // Invitation management (public 
 app.use('/api/webhooks', webhookRateLimitMiddleware, webhookRoutes); // Rate limited webhooks
 app.use('/api/webhooks', webhookRateLimitMiddleware, githubWebhookRoutes); // Enhanced GitHub App webhooks
 app.use('/api/github', authMiddleware, githubIntegrationRoutes); // GitHub App integration management
+app.use('/api/gitlab', authMiddleware, gitlabIntegrationRoutes); // GitLab API integration management
 app.use('/api/analytics', authMiddleware, analyticsRoutes);
 app.use('/api/admin', adminRoutes); // Admin dashboard (includes admin auth middleware internally)
 app.use('/api/marketing', marketingRoutes); // Marketing signup and lead management
