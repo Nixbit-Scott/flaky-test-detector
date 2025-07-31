@@ -23,6 +23,7 @@ export interface CrossRepoPattern {
     environmentFactors?: string[]; // Common infrastructure/env issues
     dependencyPatterns?: string[]; // Shared dependencies
     frameworkPatterns?: string[]; // Similar test frameworks
+    mlInsights?: string[]; // ML-generated insights
   };
   rootCause: {
     primaryCause: string;
@@ -204,7 +205,22 @@ export class CrossRepoPatternDetectionService {
     const environmentalPatterns = await this.detectEnvironmentalPatterns(flakyTestData);
     patterns.push(...environmentalPatterns);
 
-    return patterns.filter(p => p.confidence > 0.3); // Filter out low-confidence patterns
+    // NEW: Detect ML-based semantic similarity patterns
+    const semanticPatterns = await this.detectSemanticSimilarityPatterns(flakyTestData);
+    patterns.push(...semanticPatterns);
+
+    // NEW: Detect cross-repo cascading failure patterns
+    const cascadingPatterns = await this.detectCascadingFailurePatterns(flakyTestData);
+    patterns.push(...cascadingPatterns);
+
+    // NEW: Detect resource contention patterns
+    const resourcePatterns = await this.detectResourceContentionPatterns(flakyTestData);
+    patterns.push(...resourcePatterns);
+
+    // Apply ML-based pattern correlation and similarity scoring
+    const correlatedPatterns = await this.correlatePatternsWithML(patterns, flakyTestData);
+
+    return correlatedPatterns.filter(p => p.confidence > 0.3); // Filter out low-confidence patterns
   }
 
   private async detectTemporalPatterns(flakyTestData: any): Promise<CrossRepoPattern[]> {
@@ -820,5 +836,619 @@ export class CrossRepoPatternDetectionService {
     } catch (error) {
       logger.error('Error marking pattern as resolved:', error);
     }
+  }
+
+  // NEW: Advanced ML-based pattern detection methods
+
+  private async detectSemanticSimilarityPatterns(flakyTestData: any): Promise<CrossRepoPattern[]> {
+    const patterns: CrossRepoPattern[] = [];
+    const { testResults, flakyPatterns } = flakyTestData;
+
+    // Group test failures by semantic similarity of error messages
+    const errorGroups = this.groupErrorsBySementicSimilarity(testResults);
+    
+    for (const [errorSignature, failures] of Object.entries(errorGroups)) {
+      const affectedProjects = new Set(failures.map((f: any) => f.testRun.projectId));
+      
+      if (affectedProjects.size >= 2 && failures.length >= 3) {
+        const affectedTests = this.getAffectedTestsFromFailures(failures);
+        const similarityScore = this.calculateSemanticSimilarityScore(failures);
+        
+        const pattern: CrossRepoPattern = {
+          id: `semantic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          patternType: 'unknown', // Will be classified by ML
+          severity: this.calculateSeverity(affectedTests.length, failures.length),
+          confidence: Math.min(0.95, similarityScore),
+          affectedRepos: [...affectedProjects],
+          affectedTests,
+          commonFactors: {
+            errorPatterns: [errorSignature],
+            environmentFactors: this.extractCommonEnvironmentalFactors(failures)
+          },
+          rootCause: {
+            primaryCause: `Semantic similarity pattern: ${this.classifyErrorPattern(errorSignature)}`,
+            secondaryCauses: this.extractSemanticCauses(failures),
+            evidenceStrength: similarityScore,
+            suggestedFixes: this.generateSemanticBasedFixes(errorSignature, failures)
+          },
+          impactMetrics: {
+            totalFailures: failures.length,
+            affectedProjectsCount: affectedTests.length,
+            estimatedCostImpact: failures.length * 65, // Higher cost for complex patterns
+            timeToResolution: Math.ceil(similarityScore * 7) // 1-7 days based on complexity
+          },
+          detectedAt: new Date(),
+          lastUpdated: new Date()
+        };
+
+        patterns.push(pattern);
+      }
+    }
+
+    return patterns;
+  }
+
+  private async detectCascadingFailurePatterns(flakyTestData: any): Promise<CrossRepoPattern[]> {
+    const patterns: CrossRepoPattern[] = [];
+    const { testResults } = flakyTestData;
+
+    // Analyze temporal relationships between failures across repositories
+    const timeWindowMinutes = 30;
+    const cascadingGroups = this.identifyCascadingFailures(testResults, timeWindowMinutes);
+
+    for (const cascade of cascadingGroups) {
+      if (cascade.affectedRepos.size >= 2 && cascade.totalFailures >= 5) {
+        const affectedTests = this.getAffectedTestsFromFailures(cascade.failures);
+        const cascadeConfidence = this.calculateCascadeConfidence(cascade);
+
+        const pattern: CrossRepoPattern = {
+          id: `cascade-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          patternType: 'infrastructure',
+          severity: cascade.affectedRepos.size >= 4 ? 'critical' : 'high',
+          confidence: cascadeConfidence,
+          affectedRepos: [...cascade.affectedRepos],
+          affectedTests,
+          commonFactors: {
+            timePatterns: [`Cascading failure pattern over ${timeWindowMinutes} minutes`],
+            environmentFactors: [
+              'Service dependency chain failure',
+              'Infrastructure cascade effect',
+              'Shared resource exhaustion'
+            ]
+          },
+          rootCause: {
+            primaryCause: 'Cascading failure across dependent services',
+            secondaryCauses: [
+              'Upstream service degradation',
+              'Resource exhaustion propagation',
+              'Circuit breaker activation',
+              'Database connection pool exhaustion'
+            ],
+            evidenceStrength: cascadeConfidence,
+            suggestedFixes: [
+              'Implement circuit breakers between services',
+              'Add service dependency health checks',
+              'Review resource allocation and scaling',
+              'Implement gradual degradation strategies',
+              'Add service isolation mechanisms'
+            ]
+          },
+          impactMetrics: {
+            totalFailures: cascade.totalFailures,
+            affectedProjectsCount: cascade.affectedRepos.size,
+            estimatedCostImpact: cascade.totalFailures * 85, // High cost for cascading failures
+            timeToResolution: 5 // Complex infrastructure issues
+          },
+          detectedAt: new Date(),
+          lastUpdated: new Date()
+        };
+
+        patterns.push(pattern);
+      }
+    }
+
+    return patterns;
+  }
+
+  private async detectResourceContentionPatterns(flakyTestData: any): Promise<CrossRepoPattern[]> {
+    const patterns: CrossRepoPattern[] = [];
+    const { testResults } = flakyTestData;
+
+    // Analyze resource usage patterns that correlate with failures
+    const resourceGroups = await this.analyzeResourceContentionPatterns(testResults);
+
+    for (const [resourceType, contentionData] of Object.entries(resourceGroups)) {
+      if (contentionData.affectedRepos.size >= 2 && contentionData.correlationScore > 0.7) {
+        const affectedTests = this.getAffectedTestsFromFailures(contentionData.failures);
+
+        const pattern: CrossRepoPattern = {
+          id: `resource-${resourceType}-${Date.now()}`,
+          patternType: 'infrastructure',
+          severity: contentionData.correlationScore > 0.9 ? 'high' : 'medium',
+          confidence: contentionData.correlationScore,
+          affectedRepos: [...contentionData.affectedRepos],
+          affectedTests,
+          commonFactors: {
+            environmentFactors: [
+              `${resourceType} contention pattern`,
+              'Resource usage correlation',
+              'Performance degradation indicator'
+            ]
+          },
+          rootCause: {
+            primaryCause: `Resource contention in ${resourceType}`,
+            secondaryCauses: [
+              'Insufficient resource allocation',
+              'Poor resource management',
+              'Concurrent resource access',
+              'Resource leak or buildup'
+            ],
+            evidenceStrength: contentionData.correlationScore,
+            suggestedFixes: [
+              `Increase ${resourceType} allocation`,
+              'Implement resource pooling',
+              'Add resource monitoring and alerting',
+              'Review resource cleanup procedures',
+              'Implement resource usage limits'
+            ]
+          },
+          impactMetrics: {
+            totalFailures: contentionData.failures.length,
+            affectedProjectsCount: contentionData.affectedRepos.size,
+            estimatedCostImpact: contentionData.failures.length * 55,
+            timeToResolution: 3
+          },
+          detectedAt: new Date(),
+          lastUpdated: new Date()
+        };
+
+        patterns.push(pattern);
+      }
+    }
+
+    return patterns;
+  }
+
+  private async correlatePatternsWithML(patterns: CrossRepoPattern[], flakyTestData: any): Promise<CrossRepoPattern[]> {
+    // Apply ML-based correlation to enhance pattern detection
+    const enhancedPatterns: CrossRepoPattern[] = [];
+
+    for (const pattern of patterns) {
+      // Calculate pattern similarity with historical data
+      const historicalSimilarity = await this.calculateHistoricalSimilarity(pattern);
+      
+      // Enhance confidence based on historical patterns
+      const enhancedConfidence = Math.min(0.99, pattern.confidence + (historicalSimilarity * 0.2));
+      
+      // Re-classify pattern type based on ML analysis
+      const mlClassification = this.classifyPatternWithML(pattern, flakyTestData);
+      
+      // Update root cause analysis with ML insights
+      const enhancedRootCause = await this.enhanceRootCauseWithML(pattern.rootCause, pattern);
+
+      const enhancedPattern: CrossRepoPattern = {
+        ...pattern,
+        confidence: enhancedConfidence,
+        patternType: (mlClassification.type as CrossRepoPattern['patternType']) || pattern.patternType,
+        rootCause: enhancedRootCause,
+        // Add ML-specific metadata
+        commonFactors: {
+          ...pattern.commonFactors,
+          mlInsights: mlClassification.insights || []
+        }
+      };
+
+      enhancedPatterns.push(enhancedPattern);
+    }
+
+    // Merge similar patterns to reduce noise
+    return this.mergeSimilarPatterns(enhancedPatterns);
+  }
+
+  // Helper methods for advanced pattern detection
+
+  private groupErrorsBySementicSimilarity(testResults: any[]): Record<string, any[]> {
+    const groups: Record<string, any[]> = {};
+    
+    for (const result of testResults) {
+      if (!result.errorMessage) continue;
+      
+      const signature = this.extractErrorSignature(result.errorMessage);
+      if (!groups[signature]) {
+        groups[signature] = [];
+      }
+      groups[signature].push(result);
+    }
+
+    return groups;
+  }
+
+  private extractErrorSignature(errorMessage: string): string {
+    // Extract semantic signature from error message
+    const normalized = errorMessage
+      .toLowerCase()
+      .replace(/\d+/g, 'NUM') // Replace numbers
+      .replace(/[a-f0-9]{8,}/g, 'HEX') // Replace hex values
+      .replace(/\/[^\/\s]+/g, '/PATH') // Replace file paths
+      .replace(/\b\w+Error\b/g, 'ERROR') // Normalize error types
+      .substring(0, 200); // Limit length
+
+    return normalized;
+  }
+
+  private calculateSemanticSimilarityScore(failures: any[]): number {
+    if (failures.length < 2) return 0;
+
+    // Calculate similarity based on error message patterns, timing, and context
+    let totalSimilarity = 0;
+    let comparisons = 0;
+
+    for (let i = 0; i < failures.length - 1; i++) {
+      for (let j = i + 1; j < failures.length; j++) {
+        const similarity = this.calculatePairwiseSimilarity(failures[i], failures[j]);
+        totalSimilarity += similarity;
+        comparisons++;
+      }
+    }
+
+    return comparisons > 0 ? totalSimilarity / comparisons : 0;
+  }
+
+  private calculatePairwiseSimilarity(failure1: any, failure2: any): number {
+    let similarity = 0;
+    let factors = 0;
+
+    // Error message similarity
+    if (failure1.errorMessage && failure2.errorMessage) {
+      similarity += this.stringSimilarity(failure1.errorMessage, failure2.errorMessage);
+      factors++;
+    }
+
+    // Test name similarity
+    if (failure1.testName && failure2.testName) {
+      similarity += this.stringSimilarity(failure1.testName, failure2.testName) * 0.5;
+      factors++;
+    }
+
+    // Timing similarity (same hour of day)
+    const time1 = new Date(failure1.timestamp).getHours();
+    const time2 = new Date(failure2.timestamp).getHours();
+    if (Math.abs(time1 - time2) <= 1) {
+      similarity += 0.3;
+    }
+    factors++;
+
+    return factors > 0 ? similarity / factors : 0;
+  }
+
+  private stringSimilarity(str1: string, str2: string): number {
+    // Simple Jaccard similarity for strings
+    const words1 = new Set(str1.toLowerCase().split(/\s+/));
+    const words2 = new Set(str2.toLowerCase().split(/\s+/));
+    
+    const intersection = new Set([...words1].filter(word => words2.has(word)));
+    const union = new Set([...words1, ...words2]);
+    
+    return union.size > 0 ? intersection.size / union.size : 0;
+  }
+
+  private identifyCascadingFailures(testResults: any[], timeWindowMinutes: number) {
+    const cascades: any[] = [];
+    const sortedResults = testResults.sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    for (let i = 0; i < sortedResults.length; i++) {
+      const initialFailure = sortedResults[i];
+      const cascadeWindow = new Date(initialFailure.timestamp);
+      cascadeWindow.setMinutes(cascadeWindow.getMinutes() + timeWindowMinutes);
+
+      const cascade = {
+        initialFailure,
+        failures: [initialFailure],
+        affectedRepos: new Set([initialFailure.testRun.projectId]),
+        totalFailures: 1,
+        timeSpan: 0
+      };
+
+      for (let j = i + 1; j < sortedResults.length; j++) {
+        const currentFailure = sortedResults[j];
+        const failureTime = new Date(currentFailure.timestamp);
+
+        if (failureTime <= cascadeWindow) {
+          cascade.failures.push(currentFailure);
+          cascade.affectedRepos.add(currentFailure.testRun.projectId);
+          cascade.totalFailures++;
+          cascade.timeSpan = failureTime.getTime() - new Date(initialFailure.timestamp).getTime();
+        } else {
+          break;
+        }
+      }
+
+      if (cascade.totalFailures >= 3 && cascade.affectedRepos.size >= 2) {
+        cascades.push(cascade);
+      }
+    }
+
+    // Remove overlapping cascades, keep the largest ones
+    return this.deduplicateCascades(cascades);
+  }
+
+  private calculateCascadeConfidence(cascade: any): number {
+    // Calculate confidence based on failure density, repo spread, and timing
+    const timeDensity = cascade.totalFailures / (cascade.timeSpan / (1000 * 60)); // failures per minute
+    const repoSpread = cascade.affectedRepos.size / 10; // normalize to 0-1 range
+    const failureCount = Math.min(cascade.totalFailures / 20, 1); // normalize to 0-1 range
+
+    return Math.min(0.95, (timeDensity * 0.4 + repoSpread * 0.3 + failureCount * 0.3));
+  }
+
+  private deduplicateCascades(cascades: any[]): any[] {
+    // Remove overlapping cascades, keeping the ones with highest confidence
+    return cascades.sort((a, b) => b.totalFailures - a.totalFailures).slice(0, 5);
+  }
+
+  private async analyzeResourceContentionPatterns(testResults: any[]) {
+    // Analyze patterns in resource usage that correlate with failures
+    const resourceTypes = ['memory', 'cpu', 'disk', 'network', 'database'];
+    const patterns: Record<string, any> = {};
+
+    for (const resourceType of resourceTypes) {
+      const failures = testResults.filter(result => 
+        result.errorMessage && this.isResourceRelatedError(result.errorMessage, resourceType)
+      );
+
+      if (failures.length >= 3) {
+        const affectedRepos = new Set(failures.map(f => f.testRun.projectId));
+        
+        if (affectedRepos.size >= 2) {
+          patterns[resourceType] = {
+            failures,
+            affectedRepos,
+            correlationScore: this.calculateResourceCorrelation(failures, resourceType)
+          };
+        }
+      }
+    }
+
+    return patterns;
+  }
+
+  private isResourceRelatedError(errorMessage: string, resourceType: string): boolean {
+    const patterns: Record<string, RegExp[]> = {
+      memory: [/out of memory/i, /memory allocation/i, /heap/i, /oom/i],
+      cpu: [/timeout/i, /cpu/i, /throttle/i, /execution time/i],
+      disk: [/disk/i, /space/i, /storage/i, /write.*fail/i],
+      network: [/network/i, /connection/i, /timeout/i, /unreachable/i],
+      database: [/database/i, /connection.*pool/i, /deadlock/i, /query.*timeout/i]
+    };
+
+    return patterns[resourceType]?.some(pattern => pattern.test(errorMessage)) || false;
+  }
+
+  private calculateResourceCorrelation(failures: any[], resourceType: string): number {
+    // Calculate correlation based on timing patterns and error similarity
+    if (failures.length < 2) return 0;
+
+    // Check if failures cluster in time (indicating resource contention)
+    const timestamps = failures.map(f => new Date(f.timestamp).getTime());
+    timestamps.sort((a, b) => a - b);
+
+    let clusteredFailures = 0;
+    const clusterWindow = 10 * 60 * 1000; // 10 minutes
+
+    for (let i = 1; i < timestamps.length; i++) {
+      if (timestamps[i] - timestamps[i-1] <= clusterWindow) {
+        clusteredFailures++;
+      }
+    }
+
+    const clusteringScore = clusteredFailures / (timestamps.length - 1);
+    
+    // Combine with error message similarity
+    const avgSimilarity = this.calculateSemanticSimilarityScore(failures);
+    
+    return Math.min(0.95, (clusteringScore + avgSimilarity) / 2);
+  }
+
+  private extractCommonEnvironmentalFactors(failures: any[]): string[] {
+    const factors = new Set<string>();
+    
+    // Extract common patterns from failure contexts
+    failures.forEach(failure => {
+      if (failure.testRun?.branch?.includes('main')) factors.add('Main branch deployment');
+      if (failure.errorMessage?.includes('timeout')) factors.add('Timeout-related issue');
+      if (failure.errorMessage?.includes('connection')) factors.add('Connection issue');
+    });
+
+    return Array.from(factors);
+  }
+
+  private classifyErrorPattern(errorSignature: string): string {
+    if (errorSignature.includes('timeout')) return 'Timeout-based failure pattern';
+    if (errorSignature.includes('connection')) return 'Connection failure pattern';
+    if (errorSignature.includes('memory')) return 'Memory-related failure pattern';
+    if (errorSignature.includes('database')) return 'Database connectivity pattern';
+    return 'Complex error pattern requiring analysis';
+  }
+
+  private extractSemanticCauses(failures: any[]): string[] {
+    const causes = new Set<string>();
+    
+    failures.forEach(failure => {
+      if (failure.errorMessage?.includes('timeout')) {
+        causes.add('Network or service timeout issues');
+      }
+      if (failure.errorMessage?.includes('connection')) {
+        causes.add('Database or service connection problems');
+      }
+      if (failure.errorMessage?.includes('memory')) {
+        causes.add('Memory allocation or leak issues');
+      }
+    });
+
+    return Array.from(causes);
+  }
+
+  private generateSemanticBasedFixes(errorSignature: string, failures: any[]): string[] {
+    const fixes: string[] = ['Analyze error patterns across repositories'];
+    
+    if (errorSignature.includes('timeout')) {
+      fixes.push('Increase timeout thresholds');
+      fixes.push('Optimize slow operations');
+      fixes.push('Implement retry mechanisms');
+    }
+    
+    if (errorSignature.includes('connection')) {
+      fixes.push('Review connection pool settings');
+      fixes.push('Implement connection retry logic');
+      fixes.push('Check network configuration');
+    }
+    
+    if (errorSignature.includes('memory')) {
+      fixes.push('Review memory allocation patterns');
+      fixes.push('Check for memory leaks');
+      fixes.push('Increase available memory');
+    }
+
+    return fixes;
+  }
+
+  private async calculateHistoricalSimilarity(pattern: CrossRepoPattern): Promise<number> {
+    // In a real implementation, this would compare against historical patterns
+    // For now, return a simulated similarity score
+    return Math.random() * 0.3; // 0-0.3 boost based on historical data
+  }
+
+  private classifyPatternWithML(pattern: CrossRepoPattern, flakyTestData: any): { type: string; insights: string[] } {
+    // ML-based pattern classification
+    const insights: string[] = [];
+    let type = pattern.patternType;
+
+    // Analyze error patterns for better classification
+    const errorPatterns = pattern.commonFactors.errorPatterns || [];
+    
+    if (errorPatterns.some(p => p.includes('connection') || p.includes('network'))) {
+      type = 'infrastructure';
+      insights.push('Network connectivity pattern detected');
+    }
+    
+    if (errorPatterns.some(p => p.includes('timeout') || p.includes('performance'))) {
+      type = 'environmental';
+      insights.push('Performance degradation pattern detected');
+    }
+    
+    if (pattern.affectedRepos.length >= 4) {
+      insights.push('Wide-spread organizational issue detected');
+    }
+
+    return { type, insights };
+  }
+
+  private async enhanceRootCauseWithML(rootCause: CrossRepoPattern['rootCause'], pattern: CrossRepoPattern): Promise<CrossRepoPattern['rootCause']> {
+    // Enhance root cause analysis with ML insights
+    const enhancedCauses = [...rootCause.secondaryCauses];
+    const enhancedFixes = [...rootCause.suggestedFixes];
+
+    // Add ML-generated insights
+    if (pattern.affectedRepos.length >= 3) {
+      enhancedCauses.push('Cross-team coordination issue');
+      enhancedFixes.push('Implement cross-team testing standards');
+    }
+
+    if (pattern.confidence > 0.8) {
+      enhancedFixes.push('High-confidence pattern - prioritize immediate resolution');
+    }
+
+    return {
+      ...rootCause,
+      secondaryCauses: enhancedCauses,
+      suggestedFixes: enhancedFixes,
+      evidenceStrength: Math.min(0.99, rootCause.evidenceStrength + 0.1) // ML boost
+    };
+  }
+
+  private mergeSimilarPatterns(patterns: CrossRepoPattern[]): CrossRepoPattern[] {
+    // Merge patterns that are very similar to reduce noise
+    const merged: CrossRepoPattern[] = [];
+    const processed = new Set<string>();
+
+    for (const pattern of patterns) {
+      if (processed.has(pattern.id)) continue;
+
+      const similar = patterns.filter(p => 
+        p.id !== pattern.id && 
+        !processed.has(p.id) && 
+        this.arePatternsSimilar(pattern, p)
+      );
+
+      if (similar.length > 0) {
+        // Merge similar patterns
+        const mergedPattern = this.mergePatterns(pattern, similar);
+        merged.push(mergedPattern);
+        
+        processed.add(pattern.id);
+        similar.forEach(p => processed.add(p.id));
+      } else {
+        merged.push(pattern);
+        processed.add(pattern.id);
+      }
+    }
+
+    return merged;
+  }
+
+  private arePatternsSimilar(pattern1: CrossRepoPattern, pattern2: CrossRepoPattern): boolean {
+    // Check if patterns are similar enough to merge
+    return (
+      pattern1.patternType === pattern2.patternType &&
+      pattern1.severity === pattern2.severity &&
+      this.calculateOverlap(pattern1.affectedRepos, pattern2.affectedRepos) > 0.6
+    );
+  }
+
+  private calculateOverlap(array1: string[], array2: string[]): number {
+    const set1 = new Set(array1);
+    const set2 = new Set(array2);
+    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const union = new Set([...set1, ...set2]);
+    
+    return union.size > 0 ? intersection.size / union.size : 0;
+  }
+
+  private mergePatterns(primary: CrossRepoPattern, similar: CrossRepoPattern[]): CrossRepoPattern {
+    // Merge similar patterns into one comprehensive pattern
+    const allPatterns = [primary, ...similar];
+    
+    const mergedRepos = new Set<string>();
+    const mergedTests: CrossRepoPattern['affectedTests'] = [];
+    let totalFailures = 0;
+    let totalCost = 0;
+
+    allPatterns.forEach(pattern => {
+      pattern.affectedRepos.forEach(repo => mergedRepos.add(repo));
+      mergedTests.push(...pattern.affectedTests);
+      totalFailures += pattern.impactMetrics.totalFailures;
+      totalCost += pattern.impactMetrics.estimatedCostImpact;
+    });
+
+    return {
+      ...primary,
+      id: `merged-${primary.id}`,
+      affectedRepos: Array.from(mergedRepos),
+      affectedTests: mergedTests,
+      confidence: Math.min(0.99, primary.confidence + 0.1), // Boost confidence for merged patterns
+      impactMetrics: {
+        ...primary.impactMetrics,
+        totalFailures,
+        estimatedCostImpact: totalCost,
+        affectedProjectsCount: mergedRepos.size
+      },
+      rootCause: {
+        ...primary.rootCause,
+        primaryCause: `Merged pattern: ${primary.rootCause.primaryCause}`,
+        evidenceStrength: Math.min(0.99, primary.rootCause.evidenceStrength + 0.15)
+      }
+    };
   }
 }

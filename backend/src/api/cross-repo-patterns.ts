@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { CrossRepoPatternDetectionService } from '../services/cross-repo-pattern-detection.service';
+import { CrossRepoAlertingService } from '../services/cross-repo-alerting.service';
 import { authMiddleware } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import { PrismaClient } from '@prisma/client';
 
 const router = Router();
 const patternService = new CrossRepoPatternDetectionService();
+const alertingService = new CrossRepoAlertingService();
 const prisma = new PrismaClient();
 
 // Validation schemas
@@ -520,5 +522,279 @@ function getTopRecommendations(patterns: any[]): string[] {
   
   return recommendations.length > 0 ? recommendations : ['No critical patterns requiring immediate action'];
 }
+
+// ALERTING ENDPOINTS
+
+// GET /api/cross-repo-patterns/organization/:organizationId/monitoring
+// Get real-time monitoring dashboard
+router.get('/organization/:organizationId/monitoring', authMiddleware, async (req, res) => {
+  try {
+    const { organizationId } = req.params;
+
+    // Verify user has access to the organization
+    const team = await prisma.team.findFirst({
+      where: {
+        id: organizationId,
+        members: {
+          some: {
+            userId: req.user!.userId
+          }
+        }
+      }
+    });
+
+    if (!team) {
+      res.status(404).json({ error: 'Organization not found or access denied' });
+      return;
+    }
+
+    const dashboard = await alertingService.getMonitoringDashboard(organizationId);
+
+    res.json({
+      success: true,
+      data: dashboard
+    });
+
+  } catch (error) {
+    logger.error('Error fetching monitoring dashboard:', error);
+    res.status(500).json({ error: 'Failed to fetch monitoring dashboard' });
+  }
+});
+
+// POST /api/cross-repo-patterns/organization/:organizationId/alert-rules
+// Create a new alert rule
+router.post('/organization/:organizationId/alert-rules', authMiddleware, async (req, res) => {
+  try {
+    const { organizationId } = req.params;
+    
+    const alertRuleSchema = z.object({
+      name: z.string().min(1).max(100),
+      description: z.string().max(500).optional(),
+      conditions: z.object({
+        minAffectedRepos: z.number().min(1).max(50),
+        maxTimeToDetection: z.number().min(1).max(1440), // 1 minute to 24 hours
+        severityThreshold: z.enum(['low', 'medium', 'high', 'critical']),
+        confidenceThreshold: z.number().min(0).max(1),
+        patternTypes: z.array(z.string()),
+        estimatedCostThreshold: z.number().min(0),
+        cascadeDetection: z.boolean().default(false)
+      }),
+      actions: z.object({
+        webhookUrl: z.string().url().optional(),
+        emailRecipients: z.array(z.string().email()),
+        slackChannel: z.string().optional(),
+        createJiraTicket: z.boolean().default(false),
+        escalateAfterMinutes: z.number().min(15).max(1440).optional()
+      }),
+      isActive: z.boolean().default(true)
+    });
+
+    const ruleData = alertRuleSchema.parse(req.body);
+
+    // Verify user has access to the organization
+    const team = await prisma.team.findFirst({
+      where: {
+        id: organizationId,
+        members: {
+          some: {
+            userId: req.user!.userId,
+            role: { in: ['admin', 'owner'] } // Only admins can create alert rules
+          }
+        }
+      }
+    });
+
+    if (!team) {
+      res.status(403).json({ error: 'Insufficient permissions to create alert rules' });
+      return;
+    }
+
+    const alertRule = await alertingService.createAlertRule(organizationId, ruleData);
+
+    logger.info(`Alert rule created: ${alertRule.id} by user ${req.user!.userId}`);
+
+    res.status(201).json({
+      success: true,
+      data: alertRule
+    });
+
+  } catch (error) {
+    logger.error('Error creating alert rule:', error);
+    
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid alert rule data', details: error.errors });
+      return;
+    }
+
+    res.status(500).json({ error: 'Failed to create alert rule' });
+  }
+});
+
+// POST /api/cross-repo-patterns/alerts/:alertId/acknowledge
+// Acknowledge an alert
+router.post('/alerts/:alertId/acknowledge', authMiddleware, async (req, res) => {
+  try {
+    const { alertId } = req.params;
+
+    await alertingService.acknowledgeAlert(alertId, req.user!.userId);
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Alert acknowledged successfully',
+        acknowledgedBy: req.user!.userId,
+        acknowledgedAt: new Date()
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error acknowledging alert:', error);
+    res.status(500).json({ error: 'Failed to acknowledge alert' });
+  }
+});
+
+// POST /api/cross-repo-patterns/organization/:organizationId/setup-monitoring
+// Set up real-time monitoring for an organization
+router.post('/organization/:organizationId/setup-monitoring', authMiddleware, async (req, res) => {
+  try {
+    const { organizationId } = req.params;
+
+    // Verify user has admin access to the organization
+    const team = await prisma.team.findFirst({
+      where: {
+        id: organizationId,
+        members: {
+          some: {
+            userId: req.user!.userId,
+            role: { in: ['admin', 'owner'] }
+          }
+        }
+      }
+    });
+
+    if (!team) {
+      res.status(403).json({ error: 'Insufficient permissions to set up monitoring' });
+      return;
+    }
+
+    await alertingService.setupRealtimeMonitoring(organizationId);
+
+    logger.info(`Real-time monitoring set up for organization ${organizationId} by user ${req.user!.userId}`);
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Real-time monitoring set up successfully',
+        organizationId,
+        enabledAt: new Date()
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error setting up monitoring:', error);
+    res.status(500).json({ error: 'Failed to set up monitoring' });
+  }
+});
+
+// GET /api/cross-repo-patterns/organization/:organizationId/alerts
+// Get alerts for an organization
+router.get('/organization/:organizationId/alerts', authMiddleware, async (req, res) => {
+  try {
+    const { organizationId } = req.params;
+    const { status = 'active', limit = '20', offset = '0' } = req.query;
+
+    // Verify user has access to the organization
+    const team = await prisma.team.findFirst({
+      where: {
+        id: organizationId,
+        members: {
+          some: {
+            userId: req.user!.userId
+          }
+        }
+      }
+    });
+
+    if (!team) {
+      res.status(404).json({ error: 'Organization not found or access denied' });
+      return;
+    }
+
+    // In real implementation, this would fetch from database with proper filtering
+    const alerts = await alertingService.getActiveAlerts(organizationId);
+
+    res.json({
+      success: true,
+      data: {
+        alerts: alerts.slice(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string)),
+        total: alerts.length,
+        hasMore: alerts.length > parseInt(offset as string) + parseInt(limit as string)
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching alerts:', error);
+    res.status(500).json({ error: 'Failed to fetch alerts' });
+  }
+});
+
+// Enhanced pattern analysis with alert processing
+router.post('/organization/:organizationId/analyze-with-alerts', authMiddleware, async (req, res) => {
+  try {
+    const { organizationId } = req.params;
+    const { timeWindowDays = 30, enableAlerts = true } = req.body;
+
+    // Verify user has access to the organization
+    const team = await prisma.team.findFirst({
+      where: {
+        id: organizationId,
+        members: {
+          some: {
+            userId: req.user!.userId
+          }
+        }
+      }
+    });
+
+    if (!team) {
+      res.status(404).json({ error: 'Organization not found or access denied' });
+      return;
+    }
+
+    // Run pattern analysis
+    const analysisResult = await patternService.analyzeOrganizationPatterns(
+      organizationId,
+      timeWindowDays
+    );
+
+    let alertsTriggered: any[] = [];
+
+    // Process alerts if enabled
+    if (enableAlerts && analysisResult.detectedPatterns.length > 0) {
+      alertsTriggered = await alertingService.processNewPatterns(
+        organizationId,
+        analysisResult.detectedPatterns
+      );
+    }
+
+    logger.info(`Pattern analysis with alerts completed for ${organizationId}: ${analysisResult.detectedPatterns.length} patterns, ${alertsTriggered.length} alerts`);
+
+    res.json({
+      success: true,
+      data: {
+        analysis: analysisResult,
+        alerts: {
+          triggered: alertsTriggered.length,
+          details: alertsTriggered
+        },
+        analyzedAt: new Date()
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error in pattern analysis with alerts:', error);
+    res.status(500).json({ error: 'Failed to analyze patterns with alerts' });
+  }
+});
 
 export default router;
