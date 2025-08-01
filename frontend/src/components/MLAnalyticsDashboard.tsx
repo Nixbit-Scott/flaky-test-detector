@@ -166,7 +166,7 @@ export const MLAnalyticsDashboard: React.FC<{ organizationId: string }> = ({ org
       const result = await response.json();
       return result.data;
     },
-    refetchInterval
+    refetchInterval: refreshInterval
   });
 
   // Fetch predictions
@@ -178,7 +178,7 @@ export const MLAnalyticsDashboard: React.FC<{ organizationId: string }> = ({ org
       const result = await response.json();
       return result.data;
     },
-    refetchInterval
+    refetchInterval: refreshInterval
   });
 
   // Fetch time series analysis
@@ -190,7 +190,7 @@ export const MLAnalyticsDashboard: React.FC<{ organizationId: string }> = ({ org
       const result = await response.json();
       return result.data;
     },
-    refetchInterval
+    refetchInterval: refreshInterval
   });
 
   // Fetch model performance
@@ -202,7 +202,7 @@ export const MLAnalyticsDashboard: React.FC<{ organizationId: string }> = ({ org
       const result = await response.json();
       return result.data;
     },
-    refetchInterval
+    refetchInterval: refreshInterval
   });
 
   const isLoading = insightsLoading || predictionsLoading || timeSeriesLoading || modelLoading;
@@ -220,7 +220,7 @@ export const MLAnalyticsDashboard: React.FC<{ organizationId: string }> = ({ org
             {predictions?.summary?.highRiskTests || 0}
           </div>
           <p className="text-xs text-muted-foreground">
-            Tests with >70% failure probability
+            Tests with &gt;70% failure probability
           </p>
         </CardContent>
       </Card>
@@ -287,13 +287,7 @@ export const MLAnalyticsDashboard: React.FC<{ organizationId: string }> = ({ org
               />
               <Bar 
                 dataKey="failureProbability" 
-                fill={(entry) => {
-                  const value = entry as number;
-                  if (value > 0.7) return RISK_COLORS.critical;
-                  if (value > 0.5) return RISK_COLORS.high;
-                  if (value > 0.3) return RISK_COLORS.medium;
-                  return RISK_COLORS.low;
-                }}
+                fill="#ef4444"
               />
             </BarChart>
           </ResponsiveContainer>
