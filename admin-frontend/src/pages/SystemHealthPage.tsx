@@ -18,18 +18,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { useSystemHealthWebSocket } from '../hooks/useWebSocket';
 import WebSocketStatus from '../components/WebSocketStatus';
 
-interface SystemHealth {
-  id: string;
-  serviceName: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  responseTime?: number;
-  errorRate?: number;
-  lastError?: string;
-  metadata?: any;
-  checkedAt: string;
-  lastHealthyAt?: string;
-  lastUnhealthyAt?: string;
-}
+// Remove local interface and use the one from types
+import { SystemHealth } from '../types';
 
 interface ServiceUpdateModalProps {
   service: SystemHealth | null;
