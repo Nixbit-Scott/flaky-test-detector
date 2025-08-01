@@ -1,6 +1,6 @@
 [build]
   publish = "dist"
-  command = "npm run build:shared && npm run build:marketing && npm run build:frontend && npm run build:deploy"
+  command = "npm run build:shared && npm run build:marketing && npm run build:frontend && npm run build:admin && npm run build:deploy"
 
 [build.environment]
   NODE_VERSION = "18"
