@@ -243,6 +243,28 @@ export class OrganizationService {
     }
   }
 
+  static async isUserOrganizationAdmin(userId: string, organizationId: string): Promise<boolean> {
+    try {
+      const member = await prisma.organizationMember.findUnique({
+        where: {
+          userId_organizationId: {
+            userId,
+            organizationId,
+          },
+        },
+      });
+
+      if (!member) {
+        return false;
+      }
+
+      return member.role === 'owner' || member.role === 'admin';
+    } catch (error) {
+      logger.error('Failed to check organization admin status', { error, organizationId, userId });
+      return false;
+    }
+  }
+
   private getMaxProjectsForPlan(plan: string): number {
     switch (plan) {
       case 'starter':

@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import session from 'express-session';
+import passport from 'passport';
 import { createServer } from 'http';
 import * as cron from 'node-cron';
 
@@ -35,11 +37,13 @@ import invitationRoutes from './api/invitations';
 import adminRoutes from './api/admin';
 import marketingRoutes from './api/marketing';
 import subscriptionRoutes from './api/subscription';
+import ssoRoutes from './api/sso';
 
 // Services
 import { NotificationService } from './services/notification.service';
 import { webSocketService } from './services/websocket.service';
 import { QuarantineSchedulerService } from './services/quarantine-scheduler.service';
+import { initializePassport } from './config/passport';
 
 dotenv.config();
 
@@ -59,6 +63,23 @@ app.use(cors({
   credentials: true,
 }));
 
+// Session middleware (required for SSO)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  },
+}));
+
+// Initialize Passport for SSO
+app.use(passport.initialize());
+app.use(passport.session());
+initializePassport();
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -67,7 +88,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(rateLimitMiddleware);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
@@ -78,7 +99,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 // API health check (for frontend compatibility) - must be before other API routes
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
@@ -87,6 +108,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 app.use('/api/auth', authRateLimitMiddleware, authRoutes);
+app.use('/api/sso', authRateLimitMiddleware, ssoRoutes);
 app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/test-results', authMiddleware, testResultRoutes);
 app.use('/api/flaky-tests', authMiddleware, flakyTestRoutes);

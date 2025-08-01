@@ -47,6 +47,7 @@ model Organization {
   invitations          Invitation[]
   members              OrganizationMember[]
   teams                Team[]
+  ssoProviders         SSOProvider[]
 
   @@map("organizations")
 }
@@ -660,4 +661,23 @@ model MonitoringLog {
   @@index([functionName])
   @@index([userId])
   @@map("monitoring_logs")
+}
+
+model SSOProvider {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  name               String
+  type               String   // 'saml' or 'oidc'
+  config             Json     // SAML/OIDC configuration
+  domainRestriction  String[] // Optional domain restrictions
+  groupMappings      Json?    // Group to role mappings
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([type])
+  @@index([isActive])
+  @@map("sso_providers")
 }

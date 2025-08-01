@@ -1,0 +1,216 @@
+import passport from 'passport';
+import { Strategy as SamlStrategy, Profile as SamlProfile } from '@node-saml/passport-saml';
+import { Strategy as OpenIDConnectStrategy, Profile as OIDCProfile } from 'passport-openidconnect';
+import { SSOService, SSOUserProfile } from '../services/sso.service';
+import { UserService } from '../services/user.service';
+
+// Extend Express Request to include SSO context
+declare global {
+  namespace Express {
+    interface Request {
+      ssoContext?: {
+        organizationId: string;
+        providerId: string;
+      };
+    }
+  }
+}
+
+// Initialize Passport
+export function initializePassport(): void {
+  // Serialize user for session storage
+  passport.serializeUser((user: any, done) => {
+    done(null, {
+      id: user.id,
+      email: user.email,
+      organizationId: user.organizationId,
+    });
+  });
+
+  // Deserialize user from session
+  passport.deserializeUser(async (serializedUser: any, done) => {
+    try {
+      const user = await UserService.getUserById(serializedUser.id);
+      done(null, { ...user, organizationId: serializedUser.organizationId });
+    } catch (error) {
+      done(error, null);
+    }
+  });
+
+  // Configure SAML strategies dynamically
+  configureSAMLStrategies();
+  
+  // Configure OIDC strategies dynamically
+  configureOIDCStrategies();
+}
+
+async function configureSAMLStrategies(): Promise<void> {
+  // We'll register SAML strategies dynamically based on organization SSO configs
+  // This is called when setting up SSO for an organization
+}
+
+async function configureOIDCStrategies(): Promise<void> {
+  // We'll register OIDC strategies dynamically based on organization SSO configs
+  // This is called when setting up SSO for an organization
+}
+
+export async function configureSAMLStrategy(organizationId: string, providerId: string): Promise<void> {
+  const provider = await SSOService.getSSOProvider(providerId);
+  
+  if (!provider || provider.type !== 'saml') {
+    throw new Error('SAML provider not found or invalid type');
+  }
+
+  const config = provider.config as any;
+  const strategyName = `saml-${organizationId}-${providerId}`;
+
+  const samlStrategy = new SamlStrategy(
+    {
+      entryPoint: config.entryPoint,
+      issuer: config.issuer,
+      callbackUrl: config.callbackUrl,
+      cert: config.cert,
+      identifierFormat: config.identifierFormat || 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+      signatureAlgorithm: config.signatureAlgorithm || 'sha256',
+      forceAuthn: config.forceAuthn || false,
+      passReqToCallback: true,
+    },
+    async (req: Express.Request, profile: SamlProfile, done: any) => {
+      try {
+        const ssoProfile: SSOUserProfile = {
+          email: extractSAMLAttribute(profile, config.attributeMapping?.email || 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'),
+          firstName: extractSAMLAttribute(profile, config.attributeMapping?.firstName || 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'),
+          lastName: extractSAMLAttribute(profile, config.attributeMapping?.lastName || 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'),
+          displayName: extractSAMLAttribute(profile, config.attributeMapping?.displayName || 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'),
+          groups: extractSAMLGroups(profile, config.attributeMapping?.groups || 'http://schemas.microsoft.com/ws/2008/06/identity/claims/groups'),
+          provider: 'saml',
+          providerId: providerId,
+        };
+
+        if (!ssoProfile.email) {
+          return done(new Error('Email not provided by SAML provider'), null);
+        }
+
+        const result = await SSOService.processUserFromSSO(ssoProfile, organizationId);
+        
+        done(null, {
+          ...result.user,
+          organizationId,
+          isNewUser: result.isNewUser,
+          organizationRole: result.organizationRole,
+          teamMemberships: result.teamMemberships,
+        });
+      } catch (error) {
+        done(error, null);
+      }
+    }
+  );
+
+  passport.use(strategyName, samlStrategy);
+}
+
+export async function configureOIDCStrategy(organizationId: string, providerId: string): Promise<void> {
+  const provider = await SSOService.getSSOProvider(providerId);
+  
+  if (!provider || provider.type !== 'oidc') {
+    throw new Error('OIDC provider not found or invalid type');
+  }
+
+  const config = provider.config as any;
+  const strategyName = `oidc-${organizationId}-${providerId}`;
+
+  const oidcStrategy = new OpenIDConnectStrategy(
+    {
+      issuer: config.issuer,
+      clientID: config.clientID,
+      clientSecret: config.clientSecret,
+      callbackURL: config.callbackURL,
+      scope: config.scope.join(' '),
+      responseType: config.responseType || 'code',
+      responseMode: config.responseMode || 'query',
+      passReqToCallback: true,
+    },
+    async (req: Express.Request, iss: string, sub: string, profile: OIDCProfile, accessToken: string, refreshToken: string, done: any) => {
+      try {
+        const ssoProfile: SSOUserProfile = {
+          email: extractOIDCClaim(profile, config.attributeMapping?.email || 'email'),
+          firstName: extractOIDCClaim(profile, config.attributeMapping?.firstName || 'given_name'),
+          lastName: extractOIDCClaim(profile, config.attributeMapping?.lastName || 'family_name'),
+          displayName: extractOIDCClaim(profile, config.attributeMapping?.displayName || 'name'),
+          groups: extractOIDCGroups(profile, config.attributeMapping?.groups || 'groups'),
+          provider: 'oidc',
+          providerId: providerId,
+        };
+
+        if (!ssoProfile.email) {
+          return done(new Error('Email not provided by OIDC provider'), null);
+        }
+
+        const result = await SSOService.processUserFromSSO(ssoProfile, organizationId);
+        
+        done(null, {
+          ...result.user,
+          organizationId,
+          isNewUser: result.isNewUser,
+          organizationRole: result.organizationRole,
+          teamMemberships: result.teamMemberships,
+        });
+      } catch (error) {
+        done(error, null);
+      }
+    }
+  );
+
+  passport.use(strategyName, oidcStrategy);
+}
+
+function extractSAMLAttribute(profile: SamlProfile, attributeName: string): string | undefined {
+  if (!profile.attributes) return undefined;
+  
+  const attribute = profile.attributes[attributeName];
+  if (Array.isArray(attribute)) {
+    return attribute[0];
+  }
+  return attribute;
+}
+
+function extractSAMLGroups(profile: SamlProfile, attributeName: string): string[] {
+  if (!profile.attributes) return [];
+  
+  const groups = profile.attributes[attributeName];
+  if (Array.isArray(groups)) {
+    return groups;
+  }
+  if (typeof groups === 'string') {
+    return [groups];
+  }
+  return [];
+}
+
+function extractOIDCClaim(profile: OIDCProfile, claimName: string): string | undefined {
+  const claims = profile._json || profile;
+  return claims[claimName];
+}
+
+function extractOIDCGroups(profile: OIDCProfile, claimName: string): string[] {
+  const claims = profile._json || profile;
+  const groups = claims[claimName];
+  
+  if (Array.isArray(groups)) {
+    return groups;
+  }
+  if (typeof groups === 'string') {
+    // Handle comma-separated or space-separated groups
+    return groups.split(/[,\s]+/).filter(g => g.trim());
+  }
+  return [];
+}
+
+export function getStrategyName(organizationId: string, providerId: string, type: 'saml' | 'oidc'): string {
+  return `${type}-${organizationId}-${providerId}`;
+}
+
+export async function removeSSOStrategy(organizationId: string, providerId: string, type: 'saml' | 'oidc'): Promise<void> {
+  const strategyName = getStrategyName(organizationId, providerId, type);
+  passport.unuse(strategyName);
+}
