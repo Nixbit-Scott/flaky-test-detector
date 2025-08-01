@@ -45,7 +45,7 @@ class ApiService {
     if (error.response?.status === 401) {
       // Token expired or invalid
       localStorage.removeItem('admin_token');
-      window.location.href = '/login';
+      window.location.href = '/admin/login';
       return;
     }
 

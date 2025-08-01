@@ -20,9 +20,12 @@ const LoginPage: React.FC = () => {
     }
 
     try {
+      console.log('Admin login attempt:', { email });
       await login(email, password);
+      console.log('Admin login successful, should stay on admin dashboard');
       toast.success('Welcome to the admin dashboard');
     } catch (error) {
+      console.error('Admin login failed:', error);
       // Error is already handled by the auth context
     }
   };

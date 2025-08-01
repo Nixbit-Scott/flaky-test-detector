@@ -112,16 +112,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [state.token]);
 
   const login = async (email: string, password: string): Promise<void> => {
+    console.log('AuthContext: Starting admin login process');
     dispatch({ type: 'LOGIN_START' });
     
     try {
+      console.log('AuthContext: Calling authService.login');
       const response = await authService.login(email, password);
+      console.log('AuthContext: Login response received', { user: response.user });
       
       // Verify user is system admin
       if (!response.user.isSystemAdmin) {
         throw new Error('Access denied. System admin privileges required.');
       }
       
+      console.log('AuthContext: Admin verification passed, dispatching success');
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: {
@@ -129,7 +133,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           token: response.token,
         },
       });
+      console.log('AuthContext: Login success dispatched');
     } catch (error) {
+      console.error('AuthContext: Login failed', error);
       const message = error instanceof Error ? error.message : 'Login failed';
       dispatch({ type: 'LOGIN_FAILURE', payload: message });
       throw error;
