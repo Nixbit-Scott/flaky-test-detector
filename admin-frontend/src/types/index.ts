@@ -79,3 +79,78 @@ export interface MetricData {
   change?: number;
   changeType?: 'increase' | 'decrease';
 }
+
+// Admin dashboard specific types
+export interface AdminOverviewStats {
+  totalOrganizations: number;
+  activeUsers: number;
+  testRunsToday: number;
+  activeFlakyTests: number;
+  monthlyRecurringRevenue: number;
+  systemUptime: number;
+  averageResponseTime: number;
+}
+
+export interface AdminOrganizationSummary {
+  id: string;
+  name: string;
+  plan: string;
+  status: 'active' | 'inactive' | 'suspended';
+  userCount: number;
+  createdAt: string;
+  monthlySpend: number;
+  testRuns: number;
+  healthScore: number;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: 'active' | 'inactive';
+  isSystemAdmin: boolean;
+  createdAt: string;
+  lastLogin?: string;
+  projectsCreated: number;
+  testResultsSubmitted: number;
+  totalSessions: number;
+  avgSessionDuration: number;
+}
+
+export interface PlatformMetrics {
+  cpuUsage: Array<{ timestamp: string; value: number }>;
+  memoryUsage: Array<{ timestamp: string; value: number }>;
+  requestRate: Array<{ timestamp: string; value: number }>;
+}
+
+export interface SystemHealth {
+  service: string;
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  responseTime: number;
+  uptime: number;
+  lastChecked: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  userId: string;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  category: string;
+  severity: 'low' | 'medium' | 'high';
+  description: string;
+  metadata?: any;
+  createdAt: string;
+}
+
+export interface SystemMetric {
+  id: string;
+  metricName: string;
+  value: number;
+  metricType: 'count' | 'gauge' | 'histogram';
+  unit?: string;
+  labels?: any;
+  timestamp: string;
+}
