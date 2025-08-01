@@ -281,6 +281,8 @@ async function handleAdmin(pathSegments: string[], event: HandlerEvent) {
       return await handleOrganizations();
     case 'health':
       return await handleHealth();
+    case 'audit-logs':
+      return await handleAuditLogs(pathSegments.slice(1), event);
     default:
       return {
         statusCode: 404,
@@ -503,5 +505,212 @@ async function handleHealth() {
     statusCode: 200,
     headers,
     body: JSON.stringify(mockHealth),
+  };
+}
+
+async function handleAuditLogs(pathSegments: string[], event: HandlerEvent) {
+  // Parse query parameters for filtering
+  const query = event.queryStringParameters || {};
+  const page = parseInt(query.page || '1');
+  const limit = parseInt(query.limit || '25');
+  const action = query.action;
+  const severity = query.severity;
+  const category = query.category;
+  const resourceType = query.resourceType;
+  const from = query.from ? new Date(query.from) : null;
+  const to = query.to ? new Date(query.to) : null;
+
+  // Mock audit log data
+  const allLogs = [
+    {
+      id: 'audit-1',
+      userId: 'user-1',
+      action: 'user_login',
+      resourceType: 'user',
+      resourceId: 'user-1',
+      category: 'authentication',
+      severity: 'info',
+      description: 'User successfully logged in',
+      ipAddress: '192.168.1.100',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      details: {
+        loginMethod: 'email_password',
+        sessionId: 'sess_abc123'
+      },
+      createdAt: new Date(Date.now() - 300000).toISOString(),
+      user: {
+        id: 'user-1',
+        email: 'john@example.com',
+        name: 'John Doe'
+      }
+    },
+    {
+      id: 'audit-2',
+      userId: 'admin-nixbit',
+      action: 'organization_suspend',
+      resourceType: 'organization',
+      resourceId: 'org-123',
+      category: 'organization_management',
+      severity: 'warn',
+      description: 'Organization suspended for policy violation',
+      ipAddress: '10.0.0.1',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      details: {
+        reason: 'Terms of service violation',
+        suspensionType: 'temporary'
+      },
+      beforeState: {
+        status: 'active',
+        plan: 'enterprise'
+      },
+      afterState: {
+        status: 'suspended',
+        plan: 'enterprise',
+        suspendedAt: new Date().toISOString()
+      },
+      createdAt: new Date(Date.now() - 600000).toISOString(),
+      user: {
+        id: 'admin-nixbit',
+        email: ADMIN_EMAIL,
+        name: 'Nixbit Administrator'
+      }
+    },
+    {
+      id: 'audit-3',
+      action: 'system_backup',
+      resourceType: 'system',
+      category: 'system',
+      severity: 'info',
+      description: 'Automated system backup completed successfully',
+      details: {
+        backupSize: '2.4GB',
+        backupLocation: 's3://nixbit-backups/2024-08-01',
+        duration: '45 minutes'
+      },
+      createdAt: new Date(Date.now() - 3600000).toISOString()
+    },
+    {
+      id: 'audit-4',
+      userId: 'user-2',
+      action: 'project_create',
+      resourceType: 'project',
+      resourceId: 'proj-456',
+      category: 'project_management',
+      severity: 'info',
+      description: 'New project created',
+      ipAddress: '203.0.113.45',
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
+      details: {
+        projectName: 'E-commerce Tests',
+        repository: 'github.com/company/ecommerce'
+      },
+      afterState: {
+        id: 'proj-456',
+        name: 'E-commerce Tests',
+        status: 'active'
+      },
+      createdAt: new Date(Date.now() - 7200000).toISOString(),
+      user: {
+        id: 'user-2',
+        email: 'jane@company.com',
+        name: 'Jane Smith'
+      }
+    },
+    {
+      id: 'audit-5',
+      action: 'system_alert',
+      resourceType: 'system',
+      category: 'system',
+      severity: 'error',
+      description: 'Database connection pool exhausted',
+      details: {
+        errorCode: 'DB_POOL_EXHAUSTED',
+        activeConnections: 100,
+        maxConnections: 100,
+        queuedQueries: 25
+      },
+      createdAt: new Date(Date.now() - 10800000).toISOString()
+    },
+    {
+      id: 'audit-6',
+      userId: 'admin-nixbit',
+      action: 'user_role_change',
+      resourceType: 'user',
+      resourceId: 'user-3',
+      category: 'user_management',
+      severity: 'warn',
+      description: 'User role elevated to system administrator',
+      ipAddress: '10.0.0.1',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      beforeState: {
+        role: 'user',
+        isSystemAdmin: false
+      },
+      afterState: {
+        role: 'admin',
+        isSystemAdmin: true
+      },
+      details: {
+        elevatedBy: 'admin-nixbit',
+        reason: 'Operational requirement'
+      },
+      createdAt: new Date(Date.now() - 14400000).toISOString(),
+      user: {
+        id: 'admin-nixbit',
+        email: ADMIN_EMAIL,
+        name: 'Nixbit Administrator'
+      }
+    }
+  ];
+
+  // Apply filters
+  let filteredLogs = allLogs;
+
+  if (action) {
+    filteredLogs = filteredLogs.filter(log => 
+      log.action.toLowerCase().includes(action.toLowerCase())
+    );
+  }
+
+  if (severity) {
+    filteredLogs = filteredLogs.filter(log => log.severity === severity);
+  }
+
+  if (category) {
+    filteredLogs = filteredLogs.filter(log => log.category === category);
+  }
+
+  if (resourceType) {
+    filteredLogs = filteredLogs.filter(log => log.resourceType === resourceType);
+  }
+
+  if (from && to) {
+    filteredLogs = filteredLogs.filter(log => {
+      const logDate = new Date(log.createdAt);
+      return logDate >= from && logDate <= to;
+    });
+  }
+
+  // Pagination
+  const total = filteredLogs.length;
+  const pages = Math.ceil(total / limit);
+  const offset = (page - 1) * limit;
+  const paginatedLogs = filteredLogs.slice(offset, offset + limit);
+
+  const response = {
+    logs: paginatedLogs,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages,
+      totalPages: pages
+    }
+  };
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify(response),
   };
 }
