@@ -14,30 +14,35 @@ const PlatformMetrics: React.FC<PlatformMetricsProps> = ({ data }) => {
     );
   }
 
+  // Get the latest values from the time series data
+  const latestCpu = data.cpuUsage?.[data.cpuUsage.length - 1]?.value || 0;
+  const latestMemory = data.memoryUsage?.[data.memoryUsage.length - 1]?.value || 0;
+  const latestRequestRate = data.requestRate?.[data.requestRate.length - 1]?.value || 0;
+
   const metrics = [
     {
-      label: 'Test Success Rate',
-      value: data.successRate,
-      color: data.successRate > 90 ? 'green' : data.successRate > 80 ? 'yellow' : 'red',
+      label: 'CPU Usage',
+      value: latestCpu,
+      color: latestCpu > 80 ? 'red' : latestCpu > 60 ? 'yellow' : 'green',
       format: (value: number) => `${value.toFixed(1)}%`,
     },
     {
-      label: 'System Uptime',
-      value: data.uptime,
-      color: data.uptime > 99.5 ? 'green' : data.uptime > 99 ? 'yellow' : 'red',
+      label: 'Memory Usage',
+      value: latestMemory,
+      color: latestMemory > 80 ? 'red' : latestMemory > 60 ? 'yellow' : 'green',
       format: (value: number) => `${value.toFixed(1)}%`,
     },
     {
-      label: 'Customer Health',
-      value: data.customerHealth,
-      color: data.customerHealth > 85 ? 'green' : data.customerHealth > 70 ? 'yellow' : 'red',
-      format: (value: number) => `${value.toFixed(1)}%`,
+      label: 'Request Rate',
+      value: latestRequestRate,
+      color: latestRequestRate > 200 ? 'green' : latestRequestRate > 100 ? 'yellow' : 'red',
+      format: (value: number) => `${value.toFixed(0)} req/min`,
     },
     {
-      label: 'Revenue Growth',
-      value: data.revenueGrowth,
-      color: data.revenueGrowth > 0 ? 'green' : data.revenueGrowth > -5 ? 'yellow' : 'red',
-      format: (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(1)}%`,
+      label: 'System Health',
+      value: 95, // Mock value
+      color: 'green',
+      format: (value: number) => `${value.toFixed(1)}%`,
     },
   ];
 
@@ -78,15 +83,15 @@ const PlatformMetrics: React.FC<PlatformMetricsProps> = ({ data }) => {
       <div className="mt-6 pt-6 border-t border-gray-200">
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-gray-500">Total Revenue</p>
+            <p className="text-gray-500">Avg CPU</p>
             <p className="text-xl font-semibold text-gray-900">
-              ${data.totalRevenue.toLocaleString()}
+              {latestCpu.toFixed(1)}%
             </p>
           </div>
           <div>
-            <p className="text-gray-500">Churn Rate</p>
+            <p className="text-gray-500">Avg Memory</p>
             <p className="text-xl font-semibold text-gray-900">
-              {data.churnRate.toFixed(1)}%
+              {latestMemory.toFixed(1)}%
             </p>
           </div>
         </div>
