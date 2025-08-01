@@ -160,8 +160,8 @@
                     <!-- Netlify Function Usage -->
                     <div class="bg-white p-6 rounded-lg shadow">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Netlify Function Usage</h3>
-                        <div class="mb-6">
-                            <canvas id="functionUsageChart" width="400" height="200"></canvas>
+                        <div class="mb-6" style="position: relative; height: 200px; width: 100%;">
+                            <canvas id="functionUsageChart"></canvas>
                         </div>
                         <div class="space-y-3">
                             <div class="flex justify-between items-center">
@@ -186,8 +186,8 @@
                     <!-- Netlify Bandwidth & Storage -->
                     <div class="bg-white p-6 rounded-lg shadow">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Netlify Resources</h3>
-                        <div class="mb-6">
-                            <canvas id="resourceUsageChart" width="400" height="200"></canvas>
+                        <div class="mb-6" style="position: relative; height: 200px; width: 100%;">
+                            <canvas id="resourceUsageChart"></canvas>
                         </div>
                         <div class="space-y-3">
                             <div class="flex justify-between items-center">
@@ -354,11 +354,15 @@
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <div class="bg-white p-6 rounded-lg shadow">
                             <h3 class="text-lg font-medium text-gray-900 mb-4">Signup Trends (30 Days)</h3>
-                            <canvas id="marketingTrendsChart" width="400" height="200"></canvas>
+                            <div style="position: relative; height: 200px; width: 100%;">
+                                <canvas id="marketingTrendsChart"></canvas>
+                            </div>
                         </div>
                         <div class="bg-white p-6 rounded-lg shadow">
                             <h3 class="text-lg font-medium text-gray-900 mb-4">Signup Sources</h3>
-                            <canvas id="marketingSourcesChart" width="400" height="200"></canvas>
+                            <div style="position: relative; height: 200px; width: 100%;">
+                                <canvas id="marketingSourcesChart"></canvas>
+                            </div>
                             <div id="marketing-sources-legend" class="mt-4 space-y-2">
                                 <!-- Sources will be populated here -->
                             </div>
@@ -400,8 +404,8 @@
                     <!-- Email System Status -->
                     <div class="bg-white p-6 rounded-lg shadow">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Email System</h3>
-                        <div class="mb-6">
-                            <canvas id="emailSystemChart" width="400" height="200"></canvas>
+                        <div class="mb-6" style="position: relative; height: 200px; width: 100%;">
+                            <canvas id="emailSystemChart"></canvas>
                         </div>
                         <div class="space-y-3">
                             <div class="flex justify-between items-center">
