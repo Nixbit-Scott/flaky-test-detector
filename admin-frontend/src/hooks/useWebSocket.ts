@@ -230,34 +230,34 @@ export const useWebSocket = (options: WebSocketHookOptions = {}): WebSocketHook 
 export const useSystemHealthWebSocket = () => {
   return useWebSocket({
     subscriptions: ['system-health'],
-    autoConnect: true
+    autoConnect: false // Disable WebSocket connections
   });
 };
 
 export const useActivityFeedWebSocket = () => {
   return useWebSocket({
     subscriptions: ['activity-feed'],
-    autoConnect: true
+    autoConnect: false // Disable WebSocket connections
   });
 };
 
 export const useSupportTicketsWebSocket = () => {
   return useWebSocket({
     subscriptions: ['support-tickets'],
-    autoConnect: true
+    autoConnect: false // Disable WebSocket connections
   });
 };
 
 export const useAnalyticsWebSocket = () => {
   return useWebSocket({
     subscriptions: ['analytics'],
-    autoConnect: true
+    autoConnect: false // Disable WebSocket connections
   });
 };
 
 export const useAdminDashboardWebSocket = () => {
   return useWebSocket({
     subscriptions: ['system-health', 'activity-feed', 'analytics'],
-    autoConnect: true
+    autoConnect: false // Disable WebSocket connections for now
   });
 };
