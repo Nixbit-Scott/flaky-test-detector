@@ -9,6 +9,7 @@ import {
   ShieldCheckIcon,
   DocumentTextIcon,
   BellIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 import Logo from './Logo';
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Organizations', href: '/organizations', icon: BuildingOfficeIcon },
   { name: 'Users', href: '/users', icon: UsersIcon },
+  { name: 'Beta Management', href: '/beta-management', icon: UserGroupIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
   { name: 'System Health', href: '/system-health', icon: ShieldCheckIcon },
   { name: 'Audit Logs', href: '/audit-logs', icon: DocumentTextIcon },

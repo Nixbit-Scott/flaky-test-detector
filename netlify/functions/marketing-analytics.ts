@@ -13,10 +13,7 @@ const headers = {
 // For now, we'll create a simple solution by using the same pattern
 // In production, this would use a shared database
 
-// We need to access the same signups array from marketing-signup.ts
-// Since Netlify functions are stateless, we'll simulate this with some test data
-// and note that real implementation should use a database
-
+// Marketing analytics data store with proper initialization
 let signups: Array<{
   id: string;
   email: string;
@@ -30,9 +27,16 @@ let signups: Array<{
   createdAt: string;
 }> = [];
 
+// Initialize flag to prevent multiple initializations
+let isInitialized = false;
+
 // Initialize with some sample data for demo purposes
 function initializeSampleData() {
-  if (signups.length === 0) {
+  if (isInitialized || signups.length > 0) {
+    return; // Already initialized
+  }
+  
+  isInitialized = true;
     const now = new Date();
     const sampleSignups = [
       {
@@ -58,7 +62,6 @@ function initializeSampleData() {
       }
     ];
     signups.push(...sampleSignups);
-  }
 }
 
 // Admin users (should match auth.ts)

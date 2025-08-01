@@ -9,6 +9,7 @@ import UsersPage from './pages/UsersPage';
 import SystemHealthPage from './pages/SystemHealthPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import BetaManagementPage from './pages/BetaManagementPage';
 
 // Components
 import Layout from './components/Layout';
@@ -90,6 +91,15 @@ function App() {
           element={
             <ProtectedRoute>
               <AnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/beta-management"
+          element={
+            <ProtectedRoute>
+              <BetaManagementPage />
             </ProtectedRoute>
           }
         />
