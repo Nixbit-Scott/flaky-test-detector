@@ -20,6 +20,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     setError('');
 
     try {
+      console.log('LoginForm: Attempting login with email:', email);
+      console.log('LoginForm: API URL:', `${API_BASE_URL}/auth/login`);
+      
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -28,14 +31,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('LoginForm: Response status:', response.status);
       const data = await response.json();
+      console.log('LoginForm: Response data:', data);
 
       if (!response.ok) {
+        console.log('LoginForm: Login failed with error:', data.error);
         throw new Error(data.error || 'Login failed');
       }
 
+      console.log('LoginForm: Login successful, calling login function...');
       login(data.token, data.user);
     } catch (err) {
+      console.error('LoginForm: Login error:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);

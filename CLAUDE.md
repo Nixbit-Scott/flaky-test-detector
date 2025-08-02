@@ -8,6 +8,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Target market: Development teams with 5-50 developers struggling with flaky tests that waste 2-5 hours per week on debugging. Monetization: $29-99/month per team.
 
+## ⚠️ IMPORTANT: Production Environment Notice
+
+**CRITICAL**: The user primarily works in the **PRODUCTION ENVIRONMENT** hosted on **Netlify**, not local development.
+
+### Production Environment Details:
+- **Frontend**: Deployed on Netlify at the production URL
+- **Backend**: Netlify Functions (serverless) - NOT the local Express server
+- **Database**: Production Supabase PostgreSQL - NOT local database
+- **Authentication**: In-memory store with pre-seeded demo accounts
+
+### Production Login Credentials:
+- **Regular User**: `scott@nixbit.dev` / `demo1234`
+- **Admin User**: `admin@nixbit.dev` / `nixbit2025`
+
+### When Making Changes:
+1. **Always assume production environment** unless explicitly told otherwise
+2. **Test changes** by checking the Netlify-deployed frontend
+3. **Database operations** affect the production Supabase database
+4. **API calls** go to `/.netlify/functions/*` endpoints, not `localhost:3001`
+5. **Authentication** uses the Netlify Functions auth system, not local Prisma
+
+### Environment-Specific Behavior:
+- **Local Development**: Uses Express server + local Prisma database + local auth
+- **Production (Netlify)**: Uses Netlify Functions + Supabase + in-memory demo users
+
+This distinction is crucial for debugging authentication, database, and API issues.
+
 ## Architecture
 
 **Monorepo Structure**: The project uses npm workspaces with three main packages:

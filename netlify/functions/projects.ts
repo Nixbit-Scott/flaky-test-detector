@@ -110,7 +110,42 @@ async function handleGetProjects(event: HandlerEvent, user: { userId: string; em
   try {
     console.log('Attempting to get projects for user:', user.userId);
     
-    // Try Supabase first
+    // Check if this is a demo user (from in-memory auth)
+    const isDemoUser = user.userId.startsWith('user-') || user.userId.startsWith('admin-');
+    
+    if (isDemoUser) {
+      console.log('Demo user detected, using in-memory store only');
+      // For demo users, skip Supabase and go directly to in-memory store
+      const userProjects = projectsStore.get(user.userId) || [];
+      console.log('Demo user projects found:', userProjects.length);
+      
+      const formattedProjects = userProjects.map(project => ({
+        ...project,
+        repository: project.repositoryUrl || '',
+        branch: 'main',
+        retryEnabled: true,
+        maxRetries: 3,
+        flakyThreshold: 0.2,
+        _count: {
+          testRuns: 0,
+          flakyTests: 0,
+        },
+        testCount: 0,
+        flakyTestCount: 0,
+        lastTestRun: null,
+      }));
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          projects: formattedProjects,
+          total: formattedProjects.length,
+        }),
+      };
+    }
+    
+    // Try Supabase first for real users
     try {
       const userProjects = await getProjectsByUserId(user.userId);
       console.log('Successfully got projects from Supabase:', userProjects.length);
@@ -152,7 +187,7 @@ async function handleGetProjects(event: HandlerEvent, user: { userId: string; em
       console.warn('Supabase failed, using fallback:', supabaseError);
     }
     
-    // Fallback to in-memory store
+    // Fallback to in-memory store for any user if Supabase fails
     const userProjects = projectsStore.get(user.userId) || [];
     console.log('Using fallback storage, found projects:', userProjects.length);
     
@@ -212,27 +247,14 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
     const projectId = 'project-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     const now = new Date().toISOString();
     
-    // Try Supabase first
+    // Check if this is a demo user (from in-memory auth)
+    const isDemoUser = user.userId.startsWith('user-') || user.userId.startsWith('admin-');
+    
     let newProject;
-    try {
-      console.log('Attempting to create project in Supabase...');
-      
-      const projectData = {
-        id: projectId,
-        name: validatedData.name,
-        description: validatedData.description,
-        repository_url: validatedData.repositoryUrl,
-        user_id: user.userId,
-        is_active: true,
-      };
-
-      newProject = await createProject(projectData);
-      console.log('Successfully created project in Supabase:', newProject.name);
-      
-    } catch (supabaseError) {
-      console.warn('Supabase failed, using fallback storage:', supabaseError);
-      
-      // Fallback to in-memory storage
+    
+    if (isDemoUser) {
+      console.log('Demo user detected, using in-memory store for project creation');
+      // For demo users, use in-memory storage directly
       newProject = {
         id: projectId,
         name: validatedData.name,
@@ -257,7 +279,55 @@ async function handleCreateProject(event: HandlerEvent, user: { userId: string; 
         isActive: true,
       });
       projectsStore.set(user.userId, userProjects);
-      console.log('Successfully created project in fallback storage:', newProject.name);
+      console.log('Successfully created project in in-memory store:', newProject.name);
+      
+    } else {
+      // Try Supabase for real users
+      try {
+        console.log('Attempting to create project in Supabase for real user...');
+        
+        const projectData = {
+          id: projectId,
+          name: validatedData.name,
+          description: validatedData.description,
+          repository_url: validatedData.repositoryUrl,
+          user_id: user.userId,
+          is_active: true,
+        };
+
+        newProject = await createProject(projectData);
+        console.log('Successfully created project in Supabase:', newProject.name);
+        
+      } catch (supabaseError) {
+        console.warn('Supabase failed, using fallback storage:', supabaseError);
+        
+        // Fallback to in-memory storage
+        newProject = {
+          id: projectId,
+          name: validatedData.name,
+          description: validatedData.description,
+          repository_url: validatedData.repositoryUrl,
+          user_id: user.userId,
+          is_active: true,
+          created_at: now,
+          updated_at: now,
+        };
+        
+        // Store in memory
+        const userProjects = projectsStore.get(user.userId) || [];
+        userProjects.push({
+          id: projectId,
+          name: validatedData.name,
+          description: validatedData.description || '',
+          repositoryUrl: validatedData.repositoryUrl || '',
+          userId: user.userId,
+          createdAt: now,
+          updatedAt: now,
+          isActive: true,
+        });
+        projectsStore.set(user.userId, userProjects);
+        console.log('Successfully created project in fallback storage:', newProject.name);
+      }
     }
 
     // Add mock stats and match frontend interface
