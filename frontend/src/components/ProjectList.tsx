@@ -33,6 +33,8 @@ const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject, onCreateProj
   const fetchProjects = async () => {
     try {
       setLoading(true);
+      console.log('Fetching projects...', { refreshTrigger, timestamp: new Date().toISOString() });
+      
       const response = await fetch(`${API_BASE_URL}/projects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -40,13 +42,16 @@ const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject, onCreateProj
       });
 
       const data = await response.json();
+      console.log('Projects API response:', { status: response.status, projects: data.projects });
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch projects');
       }
 
       setProjects(data.projects);
+      console.log('Updated projects state:', data.projects.length, 'projects');
     } catch (err) {
+      console.error('Error fetching projects:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch projects');
     } finally {
       setLoading(false);

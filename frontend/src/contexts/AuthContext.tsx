@@ -46,25 +46,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (storedToken && storedUser) {
           try {
             // Validate token by making a test API call
+            console.log('Validating stored token...');
             const response = await fetch(`${API_BASE_URL}/auth/me`, {
               headers: { 'Authorization': `Bearer ${storedToken}` }
             });
             
             if (response.ok) {
               const userData = await response.json();
+              console.log('Token validation successful, user:', userData.user);
               // Token is valid
               setToken(storedToken);
               setUser(userData.user);
             } else {
+              console.log('Token validation failed, status:', response.status);
               // Token is invalid, clear storage
               localStorage.removeItem('token');
               localStorage.removeItem('user');
+              setToken(null);
+              setUser(null);
             }
           } catch (fetchError) {
+            console.warn('Failed to validate stored token:', fetchError);
             // API call failed, clear storage to be safe
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            console.warn('Failed to validate stored token:', fetchError);
+            setToken(null);
+            setUser(null);
           }
         }
         // If no stored token, just continue with no user (will show login form)

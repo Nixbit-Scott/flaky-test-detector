@@ -41,9 +41,14 @@ const Dashboard: React.FC = () => {
     setCurrentView('create');
   };
 
-  const handleProjectCreated = (_project: Project) => {
+  const handleProjectCreated = (project: Project) => {
+    console.log('Project created successfully:', project);
+    console.log('Switching to projects view and triggering refresh...');
     setCurrentView('projects');
-    setRefreshTrigger(prev => prev + 1);
+    setRefreshTrigger(prev => {
+      console.log('Incrementing refresh trigger from', prev, 'to', prev + 1);
+      return prev + 1;
+    });
     // Could also show a success message here
   };
 
