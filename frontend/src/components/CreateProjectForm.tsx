@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 
 interface CreateProjectFormProps {
   onSuccess: (project: any) => void;
@@ -49,7 +50,7 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onSuccess, onCanc
     setError('');
 
     try {
-      const response = await fetch('/api/projects', {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
