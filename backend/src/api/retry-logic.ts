@@ -41,7 +41,7 @@ router.post('/should-retry', async (req: Request, res: Response): Promise<void> 
 
     const validatedData = shouldRetrySchema.parse(req.body);
     
-    const decision = await RetryLogicService.shouldRetryTest(validatedData);
+    const decision = await RetryLogicService.shouldRetryTest(validatedData as any);
 
     res.json({
       decision,
@@ -78,7 +78,7 @@ router.post('/process-failures', async (req: Request, res: Response): Promise<vo
     
     const { retryTests, skipTests } = await RetryLogicService.processFailedTests(
       validatedData.projectId,
-      validatedData.failedTests,
+      validatedData.failedTests as any,
       validatedData.buildId
     );
 

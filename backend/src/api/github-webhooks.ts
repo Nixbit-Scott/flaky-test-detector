@@ -126,13 +126,13 @@ async function handleWorkflowRun(req: Request, res: Response, payload: any): Pro
     );
 
     // Analyze for flaky patterns
-    const flakyAnalysis = await FlakyTestDetectionService.analyzeTestRun(projectId);
+    const flakyAnalysis = await FlakyTestDetectionService.analyzeTestResults(projectId);
 
     // Create status check with results
     const summary = {
       totalTests: artifactResults.testResults.reduce((sum, r) => sum + r.totalTests, 0),
-      flakyTests: flakyAnalysis.newFlakyTests?.length || 0,
-      highRiskTests: flakyAnalysis.newFlakyTests?.filter(t => t.confidence > 0.8).length || 0,
+      flakyTests: flakyAnalysis.filter(t => t.isFlaky).length || 0,
+      highRiskTests: flakyAnalysis.filter(t => t.isFlaky && t.confidence > 0.8).length || 0,
       recommendations: generateRecommendations(flakyAnalysis)
     };
 

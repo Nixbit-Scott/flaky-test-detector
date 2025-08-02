@@ -35,7 +35,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const validatedData = submitTestResultsSchema.parse(req.body);
     
     // Calculate test statistics
-    const stats = TestResultService.calculateTestStatistics(validatedData.testResults);
+    const stats = TestResultService.calculateTestStatistics(validatedData.testResults as any);
     
     // Create test run
     const testRun = await TestResultService.createTestRun({
@@ -47,7 +47,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       startedAt: new Date(validatedData.startedAt),
       completedAt: validatedData.completedAt ? new Date(validatedData.completedAt) : undefined,
       ...stats,
-      testResults: validatedData.testResults,
+      testResults: validatedData.testResults as any,
     });
 
     res.status(201).json({

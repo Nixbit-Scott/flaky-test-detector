@@ -44,7 +44,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const projects = await ProjectService.getProjectsByUser(req.user.userId);
+    const projects = await ProjectService.getProjectsByUser((req.user as any).userId);
     res.json({ projects });
   } catch (error) {
     if (error instanceof Error) {
@@ -67,8 +67,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     
     const project = await ProjectService.createProject({
       ...validatedData,
-      userId: req.user.userId,
-    });
+      userId: (req.user as any).userId,
+    } as any);
 
     res.status(201).json({
       message: 'Project created successfully',
@@ -100,7 +100,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const project = await ProjectService.getProjectById(req.params.id, req.user.userId);
+    const project = await ProjectService.getProjectById(req.params.id, (req.user as any).userId);
     res.json({ project });
   } catch (error) {
     if (error instanceof Error) {
@@ -121,7 +121,7 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
 
     const validatedData = updateProjectSchema.parse(req.body);
     
-    const project = await ProjectService.updateProject(req.params.id, req.user.userId, validatedData);
+    const project = await ProjectService.updateProject(req.params.id, (req.user as any).userId, validatedData);
 
     res.json({
       message: 'Project updated successfully',
@@ -153,7 +153,7 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const result = await ProjectService.deleteProject(req.params.id, req.user.userId);
+    const result = await ProjectService.deleteProject(req.params.id, (req.user as any).userId);
     res.json(result);
   } catch (error) {
     if (error instanceof Error) {
@@ -174,7 +174,7 @@ router.post('/:id/api-keys', async (req: Request, res: Response): Promise<void> 
 
     const validatedData = generateApiKeySchema.parse(req.body);
     
-    const apiKey = await ProjectService.generateApiKey(req.params.id, req.user.userId, validatedData.name);
+    const apiKey = await ProjectService.generateApiKey(req.params.id, (req.user as any).userId, validatedData.name);
 
     res.status(201).json({
       message: 'API key generated successfully',
@@ -206,7 +206,7 @@ router.get('/:id/api-keys', async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const apiKeys = await ProjectService.getProjectApiKeys(req.params.id, req.user.userId);
+    const apiKeys = await ProjectService.getProjectApiKeys(req.params.id, (req.user as any).userId);
     res.json({ apiKeys });
   } catch (error) {
     if (error instanceof Error) {

@@ -18,11 +18,11 @@ interface AuthenticatedRequest extends Request {
 }
 
 // Get current organization's subscription details
-router.get('/current', auth, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/current', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      return res.status(401).json({ error: 'User not authMiddlewareenticated' });
     }
 
     const organization = await SubscriptionEnforcementService.getUserOrganization(userId);
@@ -43,11 +43,11 @@ router.get('/current', auth, async (req: AuthenticatedRequest, res: Response) =>
 });
 
 // Get organization usage statistics
-router.get('/usage', auth, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/usage', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      return res.status(401).json({ error: 'User not authMiddlewareenticated' });
     }
 
     const organization = await SubscriptionEnforcementService.getUserOrganization(userId);
@@ -81,13 +81,13 @@ router.get('/plans', async (req: Request, res: Response) => {
 });
 
 // Check feature access for current organization
-router.post('/check-feature', auth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/check-feature', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { feature } = req.body;
     const userId = req.user?.userId;
     
     if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      return res.status(401).json({ error: 'User not authMiddlewareenticated' });
     }
 
     if (!feature) {
@@ -116,11 +116,11 @@ router.post('/check-feature', auth, async (req: AuthenticatedRequest, res: Respo
 });
 
 // Get upgrade recommendations
-router.get('/upgrade-recommendations', auth, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/upgrade-recommendations', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      return res.status(401).json({ error: 'User not authMiddlewareenticated' });
     }
 
     const organization = await SubscriptionEnforcementService.getUserOrganization(userId);

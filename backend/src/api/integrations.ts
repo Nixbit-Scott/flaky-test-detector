@@ -56,7 +56,7 @@ const testIntegrationSchema = z.object({
 router.get('/project/:projectId', authMiddleware, async (req, res) => {
   try {
     const { projectId } = req.params;
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // Verify user has access to project
     const response = await fetch(`${process.env.INTERNAL_API_URL || 'http://localhost:3001'}/api/projects/${projectId}`, {
@@ -89,7 +89,7 @@ router.get('/project/:projectId', authMiddleware, async (req, res) => {
 router.post('/project/:projectId', authMiddleware, async (req, res) => {
   try {
     const { projectId } = req.params;
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // Verify user has access to project
     const response = await fetch(`${process.env.INTERNAL_API_URL || 'http://localhost:3001'}/api/projects/${projectId}`, {
@@ -108,7 +108,7 @@ router.post('/project/:projectId', authMiddleware, async (req, res) => {
     const integration = await IntegrationService.createIntegration(
       projectId,
       validatedData.type,
-      validatedData.config,
+      validatedData.config as any,
       validatedData.alertTypes,
       validatedData.name
     );
@@ -139,7 +139,7 @@ router.post('/project/:projectId', authMiddleware, async (req, res) => {
 router.put('/:integrationId', authMiddleware, async (req, res) => {
   try {
     const { integrationId } = req.params;
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // First get the integration to check project access
     const integration = await IntegrationService.getIntegrationById(integrationId);
@@ -163,7 +163,7 @@ router.put('/:integrationId', authMiddleware, async (req, res) => {
 
     const validatedData = updateIntegrationSchema.parse(req.body);
 
-    const updatedIntegration = await IntegrationService.updateIntegration(integrationId, validatedData);
+    const updatedIntegration = await IntegrationService.updateIntegration(integrationId, validatedData as any);
 
     logger.info(`Integration ${integrationId} updated by user ${userId}`);
 
@@ -191,7 +191,7 @@ router.put('/:integrationId', authMiddleware, async (req, res) => {
 router.delete('/:integrationId', authMiddleware, async (req, res) => {
   try {
     const { integrationId } = req.params;
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // First get the integration to check project access
     const integration = await IntegrationService.getIntegrationById(integrationId);
@@ -233,10 +233,10 @@ router.delete('/:integrationId', authMiddleware, async (req, res) => {
 // Test an integration configuration
 router.post('/test', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
     const validatedData = testIntegrationSchema.parse(req.body);
 
-    await IntegrationService.testIntegration(validatedData.type, validatedData.config);
+    await IntegrationService.testIntegration(validatedData.type, validatedData.config as any);
 
     logger.info(`Integration test successful for user ${userId}`);
 

@@ -30,7 +30,7 @@ router.get('/project/:projectId', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -68,7 +68,7 @@ router.get('/project/:projectId/summary', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -137,7 +137,7 @@ router.get('/project/:projectId/trends', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -175,7 +175,7 @@ router.get('/project/:projectId/tests', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -253,7 +253,7 @@ router.get('/project/:projectId/test/:testName', authMiddleware, async (req, res
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -323,7 +323,7 @@ router.get('/project/:projectId/critical', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -387,7 +387,7 @@ router.get('/project/:projectId/history', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -443,7 +443,7 @@ router.post('/project/:projectId/calculate', authMiddleware, async (req, res) =>
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 

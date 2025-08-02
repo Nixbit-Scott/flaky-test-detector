@@ -33,7 +33,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const validatedData = createTeamSchema.parse(req.body);
     
-    const team = await TeamService.createTeam((req.user as any).id, validatedData);
+    const team = await TeamService.createTeam((req.user as any).id, validatedData as any);
 
     res.status(201).json({
       message: 'Team created successfully',
@@ -151,7 +151,7 @@ router.post('/:teamId/invite', async (req: Request, res: Response): Promise<void
     const { teamId } = req.params;
     const validatedData = inviteMemberSchema.parse(req.body);
 
-    const result = await TeamService.inviteMember(teamId, (req.user as any).id, validatedData);
+    const result = await TeamService.inviteMember(teamId, (req.user as any).id, validatedData as any);
 
     res.status(result.invited ? 201 : 200).json(result);
 

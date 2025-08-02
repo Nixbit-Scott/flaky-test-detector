@@ -272,7 +272,7 @@ export class QuarantineService {
         const decision = await this.evaluateUnquarantine(test);
         
         if (decision.shouldUnquarantine) {
-          await this.unquarantineTest(test.id, decision.reason, 'auto');
+          await this.unquarantineTest(test.id, decision, 'auto');
           
           // Send notification
           await this.NOTIFICATION_SERVICE.sendQuarantineNotification({
@@ -722,7 +722,7 @@ export class QuarantineService {
 
     return await prisma.testResult.findMany({
       where: {
-        project: { id: projectId },
+        projectId: projectId,
         testName,
         testSuite: testSuite || null,
         createdAt: {
@@ -799,37 +799,4 @@ export class QuarantineService {
     };
   }
 
-  /**
-   * Fixed unquarantine method with proper parameter types
-   */
-  static async unquarantineTest(
-    flakyTestPatternId: string,
-    reason: string,
-    userId?: string
-  ): Promise<void> {
-    const triggeredBy = userId || 'auto';
-
-    // Update the flaky test pattern
-    await prisma.flakyTestPattern.update({
-      where: { id: flakyTestPatternId },
-      data: {
-        isQuarantined: false,
-        quarantinedAt: null,
-        quarantinedBy: null,
-        quarantineReason: null,
-        updatedAt: new Date(),
-      },
-    });
-
-    // Record unquarantine history
-    await prisma.quarantineHistory.create({
-      data: {
-        flakyTestPatternId,
-        action: 'unquarantined',
-        reason,
-        triggeredBy,
-        metadata: {} as any,
-      },
-    });
-  }
 }

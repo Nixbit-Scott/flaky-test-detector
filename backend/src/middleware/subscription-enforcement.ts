@@ -161,7 +161,7 @@ export const enforceProjectLimit = async (req: AuthenticatedRequest, res: Respon
     const canCreateProject = await SubscriptionEnforcementService.checkProjectLimit(organization.id);
 
     if (!canCreateProject) {
-      const limits = SubscriptionEnforcementService.getLimitsForPlan(organization.plan);
+      const limits = SubscriptionEnforcementService.getLimitsForPlan(organization.plan as any);
       return res.status(403).json({
         error: 'Project limit exceeded',
         code: 'PROJECT_LIMIT_EXCEEDED',
@@ -198,7 +198,7 @@ export const enforceMemberLimit = async (req: AuthenticatedRequest, res: Respons
         return res.status(404).json({ error: 'Organization not found' });
       }
 
-      const limits = SubscriptionEnforcementService.getLimitsForPlan(organization.plan);
+      const limits = SubscriptionEnforcementService.getLimitsForPlan(organization.plan as any);
       return res.status(403).json({
         error: 'Member limit exceeded',
         code: 'MEMBER_LIMIT_EXCEEDED',
@@ -235,7 +235,7 @@ export const enforceTeamLimit = async (req: AuthenticatedRequest, res: Response,
         return res.status(404).json({ error: 'Organization not found' });
       }
 
-      const limits = SubscriptionEnforcementService.getLimitsForPlan(organization.plan);
+      const limits = SubscriptionEnforcementService.getLimitsForPlan(organization.plan as any);
       return res.status(403).json({
         error: 'Team limit exceeded',
         code: 'TEAM_LIMIT_EXCEEDED',

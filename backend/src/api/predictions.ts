@@ -58,7 +58,7 @@ router.post('/analyze', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -103,7 +103,7 @@ router.post('/batch-analyze', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -162,7 +162,7 @@ router.get('/project/:projectId', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -228,7 +228,7 @@ router.get('/project/:projectId/summary', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -277,7 +277,7 @@ router.get('/:analysisId', authMiddleware, async (req, res) => {
     }
 
     // Verify user has access
-    if (prediction && prediction.project.userId !== req.user!.userId) {
+    if (prediction && prediction.project.userId !== (req.user as any).userId) {
       res.status(403).json({ error: 'Access denied' });
     return;
     }
@@ -314,7 +314,7 @@ router.post('/feedback', authMiddleware, async (req, res) => {
     return;
     }
 
-    if (prediction.project.userId !== req.user!.userId) {
+    if (prediction.project.userId !== (req.user as any).userId) {
       res.status(403).json({ error: 'Access denied' });
     return;
     }
@@ -322,8 +322,8 @@ router.post('/feedback', authMiddleware, async (req, res) => {
     const feedback = await prisma.predictionFeedback.create({
       data: {
         ...feedbackData,
-        userId: req.user!.userId
-      }
+        userId: (req.user as any).userId
+      } as any
     });
 
     logger.info(`Feedback submitted for prediction ${feedbackData.predictiveAnalysisId}: ${feedbackData.feedbackType}`);
@@ -355,7 +355,7 @@ router.get('/high-risk/:projectId', authMiddleware, async (req, res) => {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: req.user!.userId
+        userId: (req.user as any).userId
       }
     });
 
@@ -596,7 +596,7 @@ router.post('/bulk-feedback', authMiddleware, async (req, res) => {
           continue;
         }
 
-        if (prediction.project.userId !== req.user!.userId) {
+        if (prediction.project.userId !== (req.user as any).userId) {
           errors.push({ 
             predictionId: feedbackData.predictiveAnalysisId, 
             error: 'Access denied' 
@@ -607,8 +607,8 @@ router.post('/bulk-feedback', authMiddleware, async (req, res) => {
         const feedback = await prisma.predictionFeedback.create({
           data: {
             ...feedbackData,
-            userId: req.user!.userId
-          }
+            userId: (req.user as any).userId
+          } as any
         });
 
         results.push(feedback);
@@ -669,7 +669,7 @@ router.put('/:analysisId/feedback/:feedbackId', authMiddleware, async (req, res)
       return;
     }
 
-    if (feedback && feedback.predictiveAnalysis.project.userId !== req.user!.userId) {
+    if (feedback && feedback.predictiveAnalysis.project.userId !== (req.user as any).userId) {
       res.status(403).json({ error: 'Access denied' });
     return;
     }

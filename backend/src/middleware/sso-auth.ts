@@ -2,24 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import passport from 'passport';
 import { SSOService } from '../services/sso.service';
 import { UserService } from '../services/user.service';
-import { getStrategyName } from '../config/passport';
+// import { getStrategyName } from '../config/passport';
 
-// Extended Request interface for SSO
-declare global {
-  namespace Express {
-    interface Request {
-      ssoContext?: {
-        organizationId: string;
-        providerId: string;
-        redirectUrl?: string;
-      };
-    }
-    
-    interface Session {
-      ssoRedirectUrl?: string;
-    }
-  }
-}
+// Type definitions are in src/types/express.d.ts
 
 export interface SSOAuthOptions {
   requireSSO?: boolean;
@@ -87,7 +72,7 @@ export const ssoAuthMiddleware = (options: SSOAuthOptions = {}) => {
         }
 
         // Set SSO context for subsequent middleware
-        req.ssoContext = {
+        (req as any).ssoContext = {
           organizationId: ssoProvider.organizationId,
           providerId: ssoProvider.id,
           redirectUrl: req.body?.redirectUrl || req.query?.redirectUrl as string,
@@ -120,12 +105,12 @@ export const ssoAuthMiddleware = (options: SSOAuthOptions = {}) => {
 
 export const ssoLoginHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.ssoContext) {
+    if (!(req as any).ssoContext) {
       res.status(400).json({ error: 'SSO context not found' });
       return;
     }
 
-    const { organizationId, providerId } = req.ssoContext;
+    const { organizationId, providerId } = (req as any).ssoContext;
     const provider = await SSOService.getSSOProvider(providerId);
 
     if (!provider) {
@@ -133,11 +118,11 @@ export const ssoLoginHandler = async (req: Request, res: Response, next: NextFun
       return;
     }
 
-    const strategyName = getStrategyName(organizationId, providerId, provider.type);
+    const strategyName = `${provider.type}-${organizationId}-${providerId}`;
 
     // Store redirect URL in session
-    if (req.session && req.ssoContext.redirectUrl) {
-      req.session.ssoRedirectUrl = req.ssoContext.redirectUrl;
+    if (req.session && (req as any).ssoContext.redirectUrl) {
+      (req as any).session.ssoRedirectUrl = (req as any).ssoContext.redirectUrl;
     }
 
     // Authenticate using the specific SSO strategy
@@ -155,12 +140,12 @@ export const ssoLoginHandler = async (req: Request, res: Response, next: NextFun
 
 export const ssoCallbackHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.ssoContext) {
+    if (!(req as any).ssoContext) {
       res.status(400).json({ error: 'SSO context not found' });
       return;
     }
 
-    const { organizationId, providerId } = req.ssoContext;
+    const { organizationId, providerId } = (req as any).ssoContext;
     const provider = await SSOService.getSSOProvider(providerId);
 
     if (!provider) {
@@ -168,7 +153,7 @@ export const ssoCallbackHandler = async (req: Request, res: Response, next: Next
       return;
     }
 
-    const strategyName = getStrategyName(organizationId, providerId, provider.type);
+    const strategyName = `${provider.type}-${organizationId}-${providerId}`;
 
     passport.authenticate(strategyName, (err: any, user: any, info: any) => {
       if (err) {
@@ -202,11 +187,11 @@ export const ssoCallbackHandler = async (req: Request, res: Response, next: Next
       const token = jwt.sign(payload, jwtSecret, { expiresIn: '7d' });
 
       // Get redirect URL from session
-      const redirectUrl = req.session?.ssoRedirectUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
+      const redirectUrl = (req as any).session?.ssoRedirectUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
       
       // Clear session redirect URL
-      if (req.session) {
-        delete req.session.ssoRedirectUrl;
+      if ((req as any).session) {
+        delete (req as any).session.ssoRedirectUrl;
       }
 
       // Redirect with token or return JSON response

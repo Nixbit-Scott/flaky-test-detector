@@ -24,7 +24,7 @@ const organizationPermissionMiddleware = (requiredRole: 'owner' | 'admin' | 'mem
   return async (req: any, res: any, next: any) => {
     try {
       const { organizationId } = req.params;
-      const userId = req.user.userId;
+      const userId = (req.user as any).userId;
 
       const hasPermission = await organizationService.checkMemberPermission(
         organizationId,

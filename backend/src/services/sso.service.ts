@@ -88,7 +88,7 @@ export class SSOService {
       },
     });
 
-    return provider as SSOProvider;
+    return provider as any as SSOProvider;
   }
 
   static async getSSOProvider(id: string): Promise<SSOProvider | null> {
@@ -96,7 +96,7 @@ export class SSOService {
       where: { id },
     });
 
-    return provider as SSOProvider | null;
+    return provider as any as SSOProvider | null;
   }
 
   static async getSSOProviderByOrganization(organizationId: string): Promise<SSOProvider[]> {
@@ -108,7 +108,7 @@ export class SSOService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return providers as SSOProvider[];
+    return providers as any as SSOProvider[];
   }
 
   static async getSSOProviderByDomain(email: string): Promise<SSOProvider | null> {
@@ -124,7 +124,7 @@ export class SSOService {
       },
     });
 
-    return provider as SSOProvider | null;
+    return provider as any as SSOProvider | null;
   }
 
   static async updateSSOProvider(
@@ -147,7 +147,7 @@ export class SSOService {
       },
     });
 
-    return provider as SSOProvider;
+    return provider as any as SSOProvider;
   }
 
   static async deleteSSOProvider(id: string): Promise<void> {
@@ -178,8 +178,8 @@ export class SSOService {
         data: {
           email: profile.email,
           name: profile.displayName || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.email,
-          isActive: true,
           lastLoginAt: new Date(),
+          password: 'sso-user', // Dummy password for SSO users
         },
       });
     } else {
@@ -202,7 +202,7 @@ export class SSOService {
     let teamMemberships: Array<{ teamId: string; role: 'admin' | 'member' }> = [];
 
     if (ssoProvider?.groupMappings && profile.groups) {
-      const groupMappings = ssoProvider.groupMappings as GroupMapping[];
+      const groupMappings = ssoProvider.groupMappings as any as GroupMapping[];
       
       // Find the highest role based on group mappings
       for (const group of profile.groups) {

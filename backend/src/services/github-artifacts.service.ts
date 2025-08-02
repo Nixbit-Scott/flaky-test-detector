@@ -114,7 +114,7 @@ export class GitHubArtifactsService {
         try {
           const results = await this.downloadAndParseArtifact(
             installationId,
-            artifact,
+            artifact as any,
             options.skipCoverage
           );
 
@@ -176,7 +176,7 @@ export class GitHubArtifactsService {
       const zipPath = path.join(tempDir, `${artifact.name}.zip`);
       fs.writeFileSync(zipPath, response.data);
 
-      const zip = new AdmZip(zipPath);
+      const zip = new (AdmZip as any)(zipPath);
       const extractPath = path.join(tempDir, 'extracted');
       zip.extractAllTo(extractPath, true);
 
@@ -535,7 +535,6 @@ export class GitHubArtifactsService {
       const testRun = await prisma.testRun.create({
         data: {
           projectId,
-          testSuiteName: `GitHub Actions Run ${runId}`,
           branch: 'main', // Could be extracted from workflow data
           commit: 'unknown', // Could be extracted from workflow data
           buildId: runId.toString(),

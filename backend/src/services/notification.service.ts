@@ -78,14 +78,14 @@ export class NotificationService {
 
       // Create integration alert
       const integrationAlert: AlertPayload = {
-        type: isQuarantine ? 'test_quarantined' : 'test_unquarantined',
+        type: 'quarantine_triggered',
         projectName: project.name,
         projectId: notification.projectId,
         title,
-        message,
-        priority: isQuarantine ? 'medium' : 'low',
+        description: message,
+        severity: isQuarantine ? 'medium' : 'low',
         timestamp: new Date(),
-        metadata: {
+        data: {
           testName: notification.testName,
           testSuite: notification.testSuite,
           automated: isAuto,

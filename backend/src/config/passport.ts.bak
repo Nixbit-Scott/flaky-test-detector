@@ -4,17 +4,7 @@ import { Strategy as OpenIDConnectStrategy, Profile as OIDCProfile } from 'passp
 import { SSOService, SSOUserProfile } from '../services/sso.service';
 import { UserService } from '../services/user.service';
 
-// Extend Express Request to include SSO context
-declare global {
-  namespace Express {
-    interface Request {
-      ssoContext?: {
-        organizationId: string;
-        providerId: string;
-      };
-    }
-  }
-}
+// Type definitions are in src/types/express.d.ts
 
 // Initialize Passport
 export function initializePassport(): void {
@@ -75,7 +65,7 @@ export async function configureSAMLStrategy(organizationId: string, providerId: 
       forceAuthn: config.forceAuthn || false,
       passReqToCallback: true,
     },
-    async (req: Express.Request, profile: SamlProfile, done: any) => {
+    async (req: any, profile: any, done: any) => {
       try {
         const ssoProfile: SSOUserProfile = {
           email: extractSAMLAttribute(profile, config.attributeMapping?.email || 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'),

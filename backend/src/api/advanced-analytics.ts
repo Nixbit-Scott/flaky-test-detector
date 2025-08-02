@@ -49,7 +49,7 @@ router.get('/organization/:organizationId/insights', authMiddleware, async (req,
         id: organizationId,
         members: {
           some: {
-            userId: req.user!.userId
+            userId: (req.user as any).userId
           }
         }
       }
@@ -92,7 +92,7 @@ router.get('/organization/:organizationId/predictions', authMiddleware, async (r
         id: organizationId,
         members: {
           some: {
-            userId: req.user!.userId
+            userId: (req.user as any).userId
           }
         }
       }
@@ -155,7 +155,7 @@ router.post('/test/:testId/root-cause-analysis', authMiddleware, async (req, res
             team: {
               members: {
                 some: {
-                  userId: req.user!.userId
+                  userId: (req.user as any).userId
                 }
               }
             }
@@ -252,7 +252,7 @@ router.get('/organization/:organizationId/adaptive-recommendations', authMiddlew
         id: organizationId,
         members: {
           some: {
-            userId: req.user!.userId
+            userId: (req.user as any).userId
           }
         }
       }
@@ -343,7 +343,7 @@ router.post('/organization/:organizationId/test-suite-optimization', authMiddlew
         id: organizationId,
         members: {
           some: {
-            userId: req.user!.userId
+            userId: (req.user as any).userId
           }
         }
       }
@@ -391,7 +391,7 @@ router.get('/organization/:organizationId/time-series-analysis', authMiddleware,
         id: organizationId,
         members: {
           some: {
-            userId: req.user!.userId
+            userId: (req.user as any).userId
           }
         }
       }
@@ -440,7 +440,7 @@ router.get('/organization/:organizationId/personalized-recommendations', authMid
         id: organizationId,
         members: {
           some: {
-            userId: req.user!.userId
+            userId: (req.user as any).userId
           }
         }
       }
@@ -502,7 +502,7 @@ router.post('/continuous-learning', authMiddleware, async (req, res) => {
   try {
     // Verify user is system admin or has special permissions
     const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId }
+      where: { id: (req.user as any).userId }
     });
 
     if (!user?.isSystemAdmin) {
@@ -518,7 +518,7 @@ router.post('/continuous-learning', authMiddleware, async (req, res) => {
       success: true,
       data: learningResults,
       metadata: {
-        triggerredBy: req.user!.userId,
+        triggerredBy: (req.user as any).userId,
         triggerredAt: new Date(),
         nextScheduledRun: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
       }
@@ -541,7 +541,7 @@ router.get('/organization/:organizationId/ml-model-performance', authMiddleware,
         id: organizationId,
         members: {
           some: {
-            userId: req.user!.userId
+            userId: (req.user as any).userId
           }
         }
       }
@@ -588,7 +588,7 @@ router.post('/organization/:organizationId/optimization-feedback', authMiddlewar
         id: organizationId,
         members: {
           some: {
-            userId: req.user!.userId
+            userId: (req.user as any).userId
           }
         }
       }

@@ -21,7 +21,7 @@ const roiConfigSchema = z.object({
 // Get organizations user has access to
 router.get('/organizations', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     const organizations = await prisma.organization.findMany({
       where: {
@@ -93,7 +93,7 @@ router.get('/:organizationId/summary', authMiddleware, async (req, res) => {
   try {
     const { organizationId } = req.params;
     const period = periodSchema.optional().parse(req.query.period) || 'monthly';
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // Verify user has access to organization
     const hasAccess = await prisma.team.findFirst({
@@ -133,7 +133,7 @@ router.get('/:organizationId/projects', authMiddleware, async (req, res) => {
   try {
     const { organizationId } = req.params;
     const period = periodSchema.optional().parse(req.query.period) || 'monthly';
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // Verify user has access to organization
     const hasAccess = await prisma.team.findFirst({
@@ -177,7 +177,7 @@ router.get('/:organizationId/teams', authMiddleware, async (req, res) => {
   try {
     const { organizationId } = req.params;
     const period = periodSchema.optional().parse(req.query.period) || 'monthly';
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // Verify user has access to organization
     const hasAccess = await prisma.team.findFirst({
@@ -220,7 +220,7 @@ router.get('/:organizationId/teams', authMiddleware, async (req, res) => {
 router.get('/:organizationId/technical-debt', authMiddleware, async (req, res) => {
   try {
     const { organizationId } = req.params;
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // Verify user has access to organization
     const hasAccess = await prisma.team.findFirst({
@@ -259,7 +259,7 @@ router.get('/:organizationId/technical-debt', authMiddleware, async (req, res) =
 router.get('/:organizationId/roi', authMiddleware, async (req, res) => {
   try {
     const { organizationId } = req.params;
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
     const config = roiConfigSchema.parse(req.query);
 
     // Verify user has access to organization
@@ -303,7 +303,7 @@ router.get('/:organizationId/roi', authMiddleware, async (req, res) => {
 router.post('/:organizationId/export', authMiddleware, async (req, res) => {
   try {
     const { organizationId } = req.params;
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
     
     const { reportType, period } = z.object({
       reportType: reportTypeSchema,
@@ -357,7 +357,7 @@ router.post('/:organizationId/export', authMiddleware, async (req, res) => {
 router.get('/:organizationId/insights', authMiddleware, async (req, res) => {
   try {
     const { organizationId } = req.params;
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // Verify user has access to organization
     const hasAccess = await prisma.team.findFirst({
@@ -465,7 +465,7 @@ router.get('/:organizationId/metrics/comparison', authMiddleware, async (req, re
   try {
     const { organizationId } = req.params;
     const period = periodSchema.optional().parse(req.query.period) || 'monthly';
-    const userId = req.user!.userId;
+    const userId = (req.user as any).userId;
 
     // Verify user has access to organization
     const hasAccess = await prisma.team.findFirst({
