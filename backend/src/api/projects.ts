@@ -58,24 +58,36 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 // POST /api/projects - Create new project
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('POST /api/projects - Request received');
+    console.log('Request body:', req.body);
+    console.log('Request user:', req.user);
+    
     if (!req.user) {
+      console.log('User not authenticated');
       res.status(401).json({ error: 'User not authenticated' });
       return;
     }
 
+    console.log('Validating request data...');
     const validatedData = createProjectSchema.parse(req.body);
+    console.log('Validated data:', validatedData);
     
+    console.log('Creating project...');
     const project = await ProjectService.createProject({
       ...validatedData,
       userId: (req.user as any).userId,
     } as any);
 
+    console.log('Project created successfully:', project);
     res.status(201).json({
       message: 'Project created successfully',
       project,
     });
   } catch (error) {
+    console.error('Error creating project:', error);
+    
     if (error instanceof z.ZodError) {
+      console.log('Validation error:', error.errors);
       res.status(400).json({
         error: 'Validation failed',
         details: error.errors,
@@ -84,10 +96,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     if (error instanceof Error) {
+      console.log('Known error:', error.message);
       res.status(400).json({ error: error.message });
       return;
     }
 
+    console.log('Unknown error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

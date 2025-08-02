@@ -50,6 +50,10 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onSuccess, onCanc
     setError('');
 
     try {
+      console.log('Creating project with data:', formData);
+      console.log('API URL:', `${API_BASE_URL}/projects`);
+      console.log('Token present:', !!token);
+      
       const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'POST',
         headers: {
@@ -59,14 +63,20 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onSuccess, onCanc
         body: JSON.stringify(formData),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create project');
+        throw new Error(data.error || `HTTP ${response.status}: Failed to create project`);
       }
 
+      console.log('Project created successfully:', data.project);
       onSuccess(data.project);
     } catch (err) {
+      console.error('Project creation error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
       setLoading(false);

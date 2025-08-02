@@ -52,11 +52,18 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_BASE_URL}/api/organizations`, {
+      const response = await fetch(`${API_BASE_URL}/organizations`, {
         headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
+        // Don't throw error for 404 - just continue with empty organizations
+        if (response.status === 404) {
+          console.warn('Organizations API not available, continuing without organizations');
+          setOrganizations([]);
+          setLoading(false);
+          return;
+        }
         throw new Error('Failed to fetch organizations');
       }
 
@@ -68,7 +75,10 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
         setCurrentOrganization(orgs[0]);
       }
     } catch (err) {
+      console.warn('Organizations API error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
+      // Continue with empty organizations so app doesn't break
+      setOrganizations([]);
     } finally {
       setLoading(false);
     }
@@ -76,7 +86,7 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
   const createOrganization = async (data: any): Promise<Organization> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/organizations`, {
+      const response = await fetch(`${API_BASE_URL}/organizations`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
@@ -97,7 +107,7 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
   const updateOrganization = async (id: string, data: any): Promise<Organization> => {
     try {
-      const response = await fetch(`/api/organizations/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/organizations/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
@@ -118,7 +128,7 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
   const deleteOrganization = async (id: string): Promise<void> => {
     try {
-      const response = await fetch(`/api/organizations/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/organizations/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
@@ -140,7 +150,7 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
   const inviteUser = async (organizationId: string, data: any): Promise<void> => {
     try {
-      const response = await fetch(`/api/organizations/${organizationId}/invitations`, {
+      const response = await fetch(`${API_BASE_URL}/organizations/${organizationId}/invitations`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
@@ -159,7 +169,7 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
   const removeMember = async (organizationId: string, userId: string): Promise<void> => {
     try {
-      const response = await fetch(`/api/organizations/${organizationId}/members/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/organizations/${organizationId}/members/${userId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
@@ -177,7 +187,7 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
 
   const updateMemberRole = async (organizationId: string, userId: string, role: string): Promise<void> => {
     try {
-      const response = await fetch(`/api/organizations/${organizationId}/members/${userId}/role`, {
+      const response = await fetch(`${API_BASE_URL}/organizations/${organizationId}/members/${userId}/role`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ role }),
