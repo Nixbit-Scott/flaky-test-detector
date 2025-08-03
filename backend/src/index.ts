@@ -10,7 +10,9 @@ import * as cron from 'node-cron';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/error-handler';
 import { authMiddleware } from './middleware/auth';
-import { rateLimitMiddleware, authRateLimitMiddleware, webhookRateLimitMiddleware } from './middleware/rate-limit';
+import { rateLimitMiddleware, authRateLimitMiddleware, webhookRateLimitMiddleware, ssoRateLimitMiddleware } from './middleware/rate-limit';
+import { createSecureSessionConfig } from './config/session';
+import { initializeCSRF, csrfMiddleware, getCsrfToken } from './config/csrf';
 
 // Routes
 import authRoutes from './api/auth';
@@ -37,7 +39,7 @@ import invitationRoutes from './api/invitations';
 import adminRoutes from './api/admin';
 import marketingRoutes from './api/marketing';
 import subscriptionRoutes from './api/subscription';
-// import ssoRoutes from './api/sso';
+import ssoRoutes from './api/sso';
 
 // Services
 import { NotificationService } from './services/notification.service';
@@ -63,26 +65,27 @@ app.use(cors({
   credentials: true,
 }));
 
-// Session middleware (required for SSO)
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-  },
-}));
+// Secure session middleware (required for SSO)
+const sessionConfig = createSecureSessionConfig();
+app.use(session(sessionConfig));
+
+// Initialize CSRF protection
+initializeCSRF();
 
 // Initialize Passport for SSO
 app.use(passport.initialize());
 app.use(passport.session());
-// TODO: Fix passport config and uncomment\n// initializePassport();
+
+// Import and initialize passport configuration
+import { initializePassport } from './config/passport';
+initializePassport();
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// CSRF protection (after session middleware)
+app.use(csrfMiddleware);
 
 // Rate limiting
 app.use(rateLimitMiddleware);
@@ -97,6 +100,9 @@ app.get('/health', (_req, res) => {
   });
 });
 
+// CSRF token endpoint
+app.get('/api/auth/csrf-token', getCsrfToken);
+
 // API routes
 // API health check (for frontend compatibility) - must be before other API routes
 app.get('/api/health', (_req, res) => {
@@ -108,7 +114,7 @@ app.get('/api/health', (_req, res) => {
   });
 });
 app.use('/api/auth', authRateLimitMiddleware, authRoutes);
-// app.use('/api/sso', authRateLimitMiddleware, ssoRoutes); // TODO: Fix SSO TypeScript errors
+app.use('/api/sso', ssoRateLimitMiddleware, ssoRoutes);
 app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/test-results', authMiddleware, testResultRoutes);
 app.use('/api/flaky-tests', authMiddleware, flakyTestRoutes);
