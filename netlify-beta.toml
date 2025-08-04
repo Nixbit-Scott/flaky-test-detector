@@ -1,0 +1,67 @@
+[build]
+  publish = "dist"
+  command = "npm run build:shared && npm run build:marketing && npm run build:frontend && npm run build:admin && npm run build:deploy"
+
+[build.environment]
+  NODE_VERSION = "18"
+  VITE_API_URL = "/.netlify/functions"
+  VITE_DASHBOARD_URL = "/app"
+  VITE_ENVIRONMENT = "beta"
+  VITE_FEATURE_FLAGS_ENABLED = "true"
+  VITE_ANALYTICS_ENHANCED = "true"
+  VITE_FEEDBACK_COLLECTION = "true"
+  VITE_BETA_FEATURES = "true"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+# Main application SPA routing - serve frontend app for /app routes
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200
+
+# Admin dashboard SPA routing - serve admin app for /admin routes
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200
+
+# Beta signup page routing
+[[redirects]]
+  from = "/beta"
+  to = "/beta-signup.html"
+  status = 200
+
+# Beta dashboard routing
+[[redirects]]
+  from = "/beta/*"
+  to = "/beta/index.html"
+  status = 200
+
+# Marketing site SPA routing - catch all other routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[dev]
+  command = "npm run dev:marketing"
+  targetPort = 5174
+  port = 8888
+  publish = "marketing/dist"
+  autoLaunch = true
+
+# Beta-specific headers for enhanced tracking
+[[headers]]
+  for = "/app/*"
+  [headers.values]
+    X-Beta-Environment = "true"
+    X-Enhanced-Analytics = "true"
+    X-Feature-Flags = "enabled"
