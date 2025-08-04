@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Rocket, Users, Clock, CheckCircle, Star, ArrowRight,
+  Rocket, Users, CheckCircle, ArrowRight,
   Shield, Zap, Target, Gift, Calendar, MessageSquare,
-  Award, TrendingUp, Globe, Lock, Mail, User, Building
+  Award, TrendingUp, Globe, Mail
 } from 'lucide-react';
 import { useMarketingSignup } from '../hooks/useMarketingSignup';
 
@@ -58,7 +58,10 @@ const referralSources = [
 ];
 
 export const BetaSignupPage: React.FC = () => {
-  const { submitSignup, loading, error, success } = useMarketingSignup();
+  const { submitSignup, isSubmitting, isSuccess, error } = useMarketingSignup();
+  // Use hook state instead of local state
+  const loading = isSubmitting;
+  const success = isSuccess;
   const [formData, setFormData] = useState<BetaApplication>({
     email: '',
     name: '',
@@ -147,17 +150,18 @@ export const BetaSignupPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isValidStep) {
-      await submitSignup({
-        email: formData.email,
-        name: formData.name,
-        company: formData.company,
-        source: 'beta-signup',
-        metadata: {
-          ...formData,
-          applicationStep: 'beta-signup',
-          submittedAt: new Date().toISOString(),
-        }
-      });
+      try {
+        await submitSignup({
+          email: formData.email,
+          name: formData.name,
+          company: formData.company,
+          teamSize: formData.teamSize as "1-5" | "6-15" | "16-50" | "50+",
+          currentPainPoints: [formData.motivation],
+          interestedFeatures: [formData.primaryUsage]
+        });
+      } catch (err) {
+        console.error('Submission error:', err);
+      }
     }
   };
 
@@ -696,7 +700,7 @@ export const BetaSignupPage: React.FC = () => {
 
               {error && (
                 <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="text-sm text-red-700">{error}</div>
+                  <div className="text-sm text-red-700">{error.message || 'An error occurred'}</div>
                 </div>
               )}
 

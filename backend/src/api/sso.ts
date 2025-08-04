@@ -2,6 +2,12 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth';
 import { SSOService, SAMLConfig, OIDCConfig } from '../services/sso.service';
+import { SSOAuditService } from '../services/sso-audit.service';
+import { CertificateManagementService } from '../services/certificate-management.service';
+import { SSOHealthMonitoringService } from '../services/sso-health-monitoring.service';
+import { SSOFallbackService } from '../services/sso-fallback.service';
+import { SSOStrategyCacheService } from '../services/sso-strategy-cache.service';
+import { SSOSecurityAuditService } from '../utils/sso-security-audit';
 import { configureSAMLStrategy, configureOIDCStrategy, removeSSOStrategy, generateOIDCAuthURL, validateOIDCState } from '../config/passport';
 import { OrganizationService } from '../services/organization.service';
 import { ssoConfigRateLimitMiddleware } from '../middleware/rate-limit';
@@ -1058,6 +1064,460 @@ router.post('/providers/:organizationId/:providerId/test-group-mapping', ssoConf
     
     res.status(500).json({
       error: 'Failed to test group mapping',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Phase 4: Production Hardening & Monitoring Endpoints
+
+// GET /api/sso/audit/:organizationId - Get SSO audit logs
+router.get('/audit/:organizationId', authMiddleware, requireOrganizationAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId } = req.params;
+    const {
+      provider,
+      action,
+      severity,
+      category,
+      startDate,
+      endDate,
+      limit = '100',
+      offset = '0',
+      format = 'json',
+    } = req.query;
+
+    const query: any = { organizationId };
+    if (provider) query.provider = provider as string;
+    if (action) query.action = action as string;
+    if (severity) query.severity = severity as string;
+    if (category) query.category = category as string;
+    if (startDate) query.startDate = new Date(startDate as string);
+    if (endDate) query.endDate = new Date(endDate as string);
+    query.limit = parseInt(limit as string, 10);
+    query.offset = parseInt(offset as string, 10);
+
+    if (format === 'export') {
+      const exportFormat = (req.query.exportFormat as string) || 'csv';
+      const exportData = await SSOAuditService.exportAuditLogs(query, exportFormat as any);
+      
+      res.setHeader('Content-Type', exportData.contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${exportData.filename}"`);
+      res.send(exportData.data);
+      return;
+    }
+
+    const result = await SSOAuditService.queryAuditLogs(query);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to retrieve audit logs',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/sso/certificates/:organizationId - Get certificate health dashboard
+router.get('/certificates/:organizationId', authMiddleware, requireOrganizationAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId } = req.params;
+    const dashboard = await CertificateManagementService.getCertificateHealthDashboard(organizationId);
+    res.json(dashboard);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get certificate dashboard',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/sso/certificates/:organizationId/:providerId/rotate - Rotate certificate
+router.post('/certificates/:organizationId/:providerId/rotate', ssoConfigRateLimitMiddleware, authMiddleware, requireOrganizationAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { providerId } = req.params;
+    const { newCertificate, rotationPlan } = req.body;
+
+    if (!newCertificate) {
+      res.status(400).json({ error: 'New certificate is required' });
+      return;
+    }
+
+    const result = await CertificateManagementService.rotateCertificate(
+      providerId,
+      newCertificate,
+      rotationPlan
+    );
+
+    if (result.success) {
+      res.json({
+        message: 'Certificate rotated successfully',
+        result,
+      });
+    } else {
+      res.status(400).json({
+        error: 'Certificate rotation failed',
+        details: result.error,
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to rotate certificate',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/sso/health/:organizationId - Get SSO health dashboard
+router.get('/health/:organizationId', authMiddleware, requireOrganizationAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId } = req.params;
+    const dashboard = await SSOHealthMonitoringService.getHealthDashboardData(organizationId);
+    res.json(dashboard);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get health dashboard',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/sso/health/alerts/:organizationId - Get active health alerts
+router.get('/health/alerts/:organizationId', authMiddleware, requireOrganizationAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId } = req.params;
+    const alerts = await SSOHealthMonitoringService.getActiveAlerts(organizationId);
+    res.json({ alerts });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get health alerts',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/sso/health/alerts/:alertId/acknowledge - Acknowledge health alert
+router.post('/health/alerts/:alertId/acknowledge', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { alertId } = req.params;
+    const user = req.user as any;
+    
+    await SSOHealthMonitoringService.acknowledgeAlert(alertId, user.userId);
+    res.json({ message: 'Alert acknowledged successfully' });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to acknowledge alert',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/sso/health/alerts/:alertId/resolve - Resolve health alert
+router.post('/health/alerts/:alertId/resolve', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { alertId } = req.params;
+    const user = req.user as any;
+    
+    await SSOHealthMonitoringService.resolveAlert(alertId, user.userId);
+    res.json({ message: 'Alert resolved successfully' });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to resolve alert',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/sso/fallback/emergency-codes/:organizationId - Generate emergency codes
+router.post('/fallback/emergency-codes/:organizationId', ssoConfigRateLimitMiddleware, authMiddleware, requireOrganizationAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId } = req.params;
+    const { count = 10, purpose = 'SSO provider failure' } = req.body;
+    const user = req.user as any;
+
+    const codes = await SSOFallbackService.generateEmergencyCodes(
+      organizationId,
+      user.userId,
+      count,
+      purpose
+    );
+
+    // Remove plaintext codes from response for security
+    const safeCodes = codes.map(code => ({
+      id: code.id,
+      purpose: code.purpose,
+      expiresAt: code.expiresAt,
+      created: true,
+    }));
+
+    res.json({
+      message: `Generated ${count} emergency codes`,
+      codes: safeCodes,
+      warning: 'Emergency codes have been generated and stored securely. Please save them in a secure location.',
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to generate emergency codes',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/sso/fallback/validate/:organizationId - Validate emergency code
+router.post('/fallback/validate/:organizationId', ssoConfigRateLimitMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId } = req.params;
+    const { code, email } = req.body;
+    const ipAddress = req.ip;
+
+    if (!code || !email) {
+      res.status(400).json({ error: 'Emergency code and email are required' });
+      return;
+    }
+
+    const result = await SSOFallbackService.validateEmergencyCode(
+      organizationId,
+      code,
+      email,
+      ipAddress
+    );
+
+    if (result.success) {
+      res.json({
+        message: 'Emergency authentication successful',
+        user: result.user,
+        method: result.method,
+        expiresAt: result.expiresAt,
+        requiresFollowUp: result.requiresFollowUp,
+      });
+    } else {
+      res.status(401).json({
+        error: 'Emergency authentication failed',
+        method: result.method,
+        restrictions: result.restrictions,
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to validate emergency code',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/sso/fallback/methods/:organizationId - Get available fallback methods
+router.get('/fallback/methods/:organizationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId } = req.params;
+    const { email } = req.query;
+
+    if (!email) {
+      res.status(400).json({ error: 'Email parameter is required' });
+      return;
+    }
+
+    const strategy = await SSOFallbackService.selectFallbackStrategy(
+      organizationId,
+      email as string
+    );
+
+    res.json(strategy);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get fallback methods',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/sso/fallback/admin-override/:organizationId - Admin override authentication
+router.post('/fallback/admin-override/:organizationId', ssoConfigRateLimitMiddleware, authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId } = req.params;
+    const { targetEmail, reason } = req.body;
+    const adminUser = req.user as any;
+    const ipAddress = req.ip;
+
+    if (!targetEmail || !reason) {
+      res.status(400).json({ error: 'Target email and reason are required' });
+      return;
+    }
+
+    const result = await SSOFallbackService.adminOverrideAuth(
+      adminUser.userId,
+      targetEmail,
+      organizationId,
+      reason,
+      ipAddress
+    );
+
+    if (result.success) {
+      res.json({
+        message: 'Admin override authentication successful',
+        user: result.user,
+        method: result.method,
+        expiresAt: result.expiresAt,
+        requiresFollowUp: result.requiresFollowUp,
+      });
+    } else {
+      res.status(403).json({
+        error: 'Admin override failed',
+        method: result.method,
+        restrictions: result.restrictions,
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to process admin override',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/sso/cache/metrics - Get strategy cache metrics
+router.get('/cache/metrics', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const metrics = SSOStrategyCacheService.getCacheMetrics();
+    res.json({
+      message: 'Strategy cache metrics retrieved',
+      metrics,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get cache metrics',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/sso/cache/optimize - Optimize strategy cache
+router.post('/cache/optimize', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await SSOStrategyCacheService.optimizeCache();
+    res.json({
+      message: 'Strategy cache optimization completed',
+      ...result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to optimize cache',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// DELETE /api/sso/cache/invalidate/:organizationId/:providerId - Invalidate cached strategy
+router.delete('/cache/invalidate/:organizationId/:providerId', authMiddleware, requireOrganizationAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId, providerId } = req.params;
+    await SSOStrategyCacheService.invalidateStrategy(organizationId, providerId);
+    res.json({
+      message: 'Strategy cache invalidated successfully',
+      organizationId,
+      providerId,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to invalidate strategy cache',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/sso/security/audit/:organizationId - Perform security audit
+router.post('/security/audit/:organizationId', ssoConfigRateLimitMiddleware, authMiddleware, requireOrganizationAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { organizationId } = req.params;
+    const auditResult = await SSOSecurityAuditService.performSecurityAudit(organizationId);
+    res.json({
+      message: 'Security audit completed successfully',
+      audit: auditResult,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Security audit failed',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/sso/security/audit - Perform system-wide security audit
+router.post('/security/audit', ssoConfigRateLimitMiddleware, authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Only system administrators can run system-wide audits
+    const user = req.user as any;
+    if (!user?.isSystemAdmin) {
+      res.status(403).json({ error: 'System administrator privileges required' });
+      return;
+    }
+
+    const auditResult = await SSOSecurityAuditService.performSecurityAudit();
+    res.json({
+      message: 'System-wide security audit completed successfully',
+      audit: auditResult,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'System security audit failed',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/sso/security/pentest-scenarios - Get penetration testing scenarios
+router.get('/security/pentest-scenarios', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const scenarios = SSOSecurityAuditService.getPenetrationTestScenarios();
+    res.json({
+      message: 'Penetration testing scenarios retrieved',
+      scenarios: scenarios.map(scenario => ({
+        ...scenario,
+        // Remove sensitive payload details for security
+        steps: scenario.steps.map(step => ({
+          ...step,
+          payload: step.payload ? '[REDACTED]' : undefined,
+        })),
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get penetration testing scenarios',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/sso/security/pentest-scenarios/:scenarioId - Get specific penetration testing scenario
+router.get('/security/pentest-scenarios/:scenarioId', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { scenarioId } = req.params;
+    const scenarios = SSOSecurityAuditService.getPenetrationTestScenarios();
+    const scenario = scenarios.find(s => s.scenarioId === scenarioId);
+    
+    if (!scenario) {
+      res.status(404).json({ error: 'Penetration testing scenario not found' });
+      return;
+    }
+
+    // Only show full details to system administrators
+    const user = req.user as any;
+    const isSystemAdmin = user?.isSystemAdmin;
+    
+    const responseScenario = {
+      ...scenario,
+      steps: scenario.steps.map(step => ({
+        ...step,
+        payload: isSystemAdmin ? step.payload : (step.payload ? '[REDACTED - Admin Access Required]' : undefined),
+      })),
+    };
+
+    res.json({
+      message: 'Penetration testing scenario retrieved',
+      scenario: responseScenario,
+      note: isSystemAdmin ? undefined : 'Full payload details require system administrator access',
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get penetration testing scenario',
       details: error instanceof Error ? error.message : 'Unknown error',
     });
   }

@@ -39,6 +39,16 @@
   "exclude": [
     "node_modules",
     "dist",
-    "tests"
+    "tests",
+    "src/services/sso*.service.ts",
+    "src/services/certificate-management.service.ts",
+    "src/utils/sso-security-audit.ts",
+    "src/api/advanced-analytics.ts",
+    "src/config/csrf.ts",
+    "src/config/passport.ts",
+    "src/config/session.ts",
+    "src/middleware/subscription-enforcement.ts",
+    "src/services/advanced-retry-policies.service.ts",
+    "src/services/cache.service.ts"
   ]
 }

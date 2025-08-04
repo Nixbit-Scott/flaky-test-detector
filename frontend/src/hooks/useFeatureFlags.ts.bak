@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, createContext, ReactNode } from 'react';
-import { FeatureFlagService, FeatureFlag, FeatureFlagConfig } from '../../../shared/src/services/feature-flags';
+import { FeatureFlagService, FeatureFlag, FeatureFlagConfig } from '../../../shared/dist/services/feature-flags';
 import { useAuth } from '../contexts/AuthContext';
 
 interface FeatureFlagContextType {

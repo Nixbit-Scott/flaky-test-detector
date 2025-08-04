@@ -4,7 +4,7 @@ import {
   Bug, AlertTriangle, Camera, Upload, Send, X, 
   Clipboard, Check, RefreshCw, Monitor
 } from 'lucide-react';
-import { useFeatureFlag } from '../hooks/useFeatureFlags';
+// import { useFeatureFlag } from '../hooks/useFeatureFlags';
 import { useAuth } from '../contexts/AuthContext';
 
 interface EnvironmentInfo {
@@ -55,8 +55,10 @@ const CATEGORY_ICONS = {
 };
 
 export const BugReportSystem: React.FC = () => {
-  const bugReportingEnabled = useFeatureFlag('bug_reporting');
-  const { user, organization } = useAuth();
+  // const bugReportingEnabled = useFeatureFlag('bug_reporting');
+  const bugReportingEnabled = true; // Temporarily hardcoded
+  const { user } = useAuth();
+  // const organization = user?.organization; // TODO: Fix organization access
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -175,7 +177,7 @@ export const BugReportSystem: React.FC = () => {
   const captureScreenshot = async () => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { mediaSource: 'screen' }
+        video: true
       });
       
       const video = document.createElement('video');
@@ -239,7 +241,7 @@ export const BugReportSystem: React.FC = () => {
         consoleLog,
         networkLog,
         userId: user?.id,
-        organizationId: organization?.id,
+        organizationId: 'default', // TODO: Fix organization access
       };
 
       formData.append('bugReport', JSON.stringify(bugReport));

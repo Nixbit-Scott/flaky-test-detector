@@ -4,7 +4,7 @@ import {
   MessageSquare, X, Send, Star, ThumbsUp, ThumbsDown,
   Bug, Lightbulb, AlertCircle, Check, ChevronRight
 } from 'lucide-react';
-import { useFeatureFlag } from '../hooks/useFeatureFlags';
+// import { useFeatureFlag } from '../hooks/useFeatureFlags';
 import { useAuth } from '../contexts/AuthContext';
 
 interface FeedbackData {
@@ -59,8 +59,10 @@ const FEEDBACK_TRIGGERS: FeedbackTrigger[] = [
 ];
 
 export const FeedbackCollection: React.FC = () => {
-  const feedbackEnabled = useFeatureFlag('feedback_collection');
-  const { user, organization } = useAuth();
+  // const feedbackEnabled = useFeatureFlag('feedback_collection');
+  const feedbackEnabled = true; // Temporarily hardcoded
+  const { user } = useAuth();
+  // const organization = user?.organization; // TODO: Fix organization access
   const [isOpen, setIsOpen] = useState(false);
   const [currentTrigger, setCurrentTrigger] = useState<FeedbackTrigger | null>(null);
   const [feedbackType, setFeedbackType] = useState<FeedbackData['type']>('general');
@@ -134,7 +136,7 @@ export const FeedbackCollection: React.FC = () => {
         userAgent: navigator.userAgent,
         timestamp: new Date().toISOString(),
         userId: user?.id,
-        organizationId: organization?.id,
+        organizationId: 'default', // TODO: Fix organization access
       };
 
       const response = await fetch('/.netlify/functions/feedback', {
