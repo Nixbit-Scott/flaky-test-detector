@@ -16,6 +16,12 @@
   to = "/.netlify/functions/api"
   status = 200
 
+# Beta signup page - serve static HTML file
+[[redirects]]
+  from = "/beta-signup"
+  to = "/beta-signup.html"
+  status = 200
+
 # Main application SPA routing - serve frontend app for /app routes
 [[redirects]]
   from = "/app/*"
