@@ -457,7 +457,7 @@
             constructor() {
                 this.baseUrl = window.location.origin;
                 this.authToken = localStorage.getItem('nixbit_admin_token');
-                this.adminPassword = localStorage.getItem('nixbit_admin_password') || 'admin2025'; // Default password
+                // Removed hardcoded password - now using API authentication
                 this.charts = {};
                 this.marketingLoading = false; // Prevent multiple simultaneous marketing analytics calls
                 this.init();
@@ -542,30 +542,36 @@
                 errorDiv.classList.add('hidden');
 
                 try {
-                    // Admin-only credentials check
-                    if (email === 'admin@nixbit.dev' && password === this.adminPassword) {
-                        // Check if using default password
-                        if (password === 'admin2025') {
-                            console.log('🔐 First login detected - password change required');
-                            this.showPasswordChange();
-                            return;
-                        }
-                        
-                        // Create admin token
-                        const token = btoa(JSON.stringify({
+                    // API-based authentication using Netlify auth function
+                    const response = await fetch('/.netlify/functions/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
                             email: email,
-                            role: 'admin',
-                            exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
-                        }));
-                        
-                        localStorage.setItem('nixbit_admin_token', token);
-                        this.authToken = token;
-                        
-                        console.log('✅ Admin authentication successful');
-                        this.showDashboard();
-                    } else {
-                        throw new Error('Invalid admin credentials');
+                            password: password
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Authentication failed');
                     }
+
+                    // Check if this is an admin user
+                    if (email !== 'admin@nixbit.dev') {
+                        throw new Error('Admin access required');
+                    }
+
+                    // Store the JWT token from the API
+                    const apiToken = data.token;
+                    localStorage.setItem('nixbit_admin_token', apiToken);
+                    this.authToken = apiToken;
+                    
+                    console.log('✅ Admin API authentication successful');
+                    this.showDashboard();
                 } catch (error) {
                     console.error('❌ Login failed:', error);
                     errorDiv.textContent = 'Invalid credentials. Use admin@nixbit.dev with the correct password.';
