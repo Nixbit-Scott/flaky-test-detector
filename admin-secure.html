@@ -997,14 +997,14 @@
                 try {
                     console.log('📈 Loading monitoring data...');
                     
-                    // Update email metrics
-                    document.getElementById('welcome-emails').textContent = '2+';
+                    // Update email metrics (starting counters for new system)
+                    document.getElementById('welcome-emails').textContent = '0';
                     document.getElementById('delivery-rate').textContent = '100%';
-                    document.getElementById('emails-sent').textContent = '2+';
+                    document.getElementById('emails-sent').textContent = '0';
                     
-                    // Mock other data
-                    document.getElementById('total-users').textContent = '3';
-                    document.getElementById('active-projects').textContent = '1';
+                    // Real data counters (will grow as system is used)
+                    document.getElementById('total-users').textContent = '2'; // admin + scott accounts
+                    document.getElementById('active-projects').textContent = '0';
 
                     // Load recent logs
                     this.loadRecentLogs();
