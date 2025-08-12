@@ -1,6 +1,6 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { z } from 'zod';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { createMonitor } from './monitoring-utils';
 
@@ -39,8 +39,6 @@ const users: Map<string, {
 
 // Initialize test accounts on each cold start
 const initializeTestAccounts = async () => {
-  const bcrypt = await import('bcryptjs');
-  
   // Regular user account
   if (!users.has('scott@nixbit.dev')) {
     const hashedPassword = await bcrypt.hash('demo1234', 10);
@@ -55,7 +53,9 @@ const initializeTestAccounts = async () => {
   
   // Admin account
   if (!users.has('admin@nixbit.dev')) {
-    const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'change_me_in_production', 10);
+    const adminPasswordPlain = process.env.ADMIN_PASSWORD || 'change_me_in_production';
+    console.log('Admin password environment variable exists:', !!process.env.ADMIN_PASSWORD);
+    const adminPassword = await bcrypt.hash(adminPasswordPlain, 10);
     users.set('admin@nixbit.dev', {
       id: 'admin-nixbit',
       email: 'admin@nixbit.dev',
@@ -264,6 +264,9 @@ async function handleLogin(event: HandlerEvent, monitor: any) {
     
     // Find user
     const user = users.get(validatedData.email);
+    console.log('Login attempt for:', validatedData.email);
+    console.log('User found:', !!user);
+    console.log('Available users:', Array.from(users.keys()));
     
     if (!user) {
       return {
@@ -276,7 +279,9 @@ async function handleLogin(event: HandlerEvent, monitor: any) {
     }
     
     // Verify password
+    console.log('Comparing passwords...');
     const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+    console.log('Password valid:', isValidPassword);
     
     if (!isValidPassword) {
       return {
