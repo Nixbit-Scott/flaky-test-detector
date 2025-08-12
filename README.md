@@ -102,11 +102,20 @@ post {
 
 ```
 flaky-test-detector/
-├── backend/           # Express.js API server
-├── frontend/          # React dashboard
-├── shared/            # Shared types and utilities
-├── docs/              # Documentation
-└── scripts/           # Build and deployment scripts
+├── admin/              # Admin dashboard
+├── backend/            # Express.js API server
+├── frontend/           # React dashboard application  
+├── netlify/            # Netlify serverless functions
+├── shared/             # Shared types and utilities
+├── docs/               # All documentation
+│   ├── beta/          # Beta program guides
+│   ├── deployment/    # Deployment & infrastructure
+│   └── development/   # Development guides & roadmap
+├── scripts/            # Utility scripts
+│   ├── tests/         # Test scripts
+│   └── setup/         # Setup and configuration
+├── config/             # Configuration files
+└── marketing/          # Marketing site & beta signup
 ```
 
 ## Pricing
