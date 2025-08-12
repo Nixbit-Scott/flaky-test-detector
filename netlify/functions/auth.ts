@@ -53,9 +53,10 @@ const initializeTestAccounts = async () => {
   
   // Admin account
   if (!users.has('admin@nixbit.dev')) {
-    const adminPasswordPlain = process.env.ADMIN_PASSWORD || 'change_me_in_production';
-    console.log('Admin password environment variable exists:', !!process.env.ADMIN_PASSWORD);
-    const adminPassword = await bcrypt.hash(adminPasswordPlain, 10);
+    // Temporarily use a simple password for testing
+    const adminPassword = await bcrypt.hash('admin2025', 10);
+    console.log('Admin account initialized with temporary password');
+    
     users.set('admin@nixbit.dev', {
       id: 'admin-nixbit',
       email: 'admin@nixbit.dev',
