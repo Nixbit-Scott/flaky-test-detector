@@ -9,16 +9,22 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
-// Marketing signup schema
+// Marketing signup schema - supports both general and beta signups
 const MarketingSignupSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(100).optional(),
   company: z.string().max(200).optional(),
-  teamSize: z.enum(['1-5', '6-15', '16-50', '50+']).optional(),
+  role: z.string().max(200).optional(),
+  teamSize: z.enum(['1-5', '6-15', '16-50', '50+', '1-5 developers', '6-15 developers', '16-50 developers', '50+ developers']).optional(),
   currentPainPoints: z.array(z.string()).optional(),
   interestedFeatures: z.array(z.string()).optional(),
+  primaryUsage: z.string().optional(),
+  motivation: z.string().optional(),
+  availableTime: z.string().optional(),
+  referralSource: z.string().optional(),
   source: z.string().optional(),
   utmParameters: z.record(z.string()).optional(),
+  metadata: z.record(z.any()).optional(),
 });
 
 type MarketingSignupRequest = z.infer<typeof MarketingSignupSchema>;
@@ -83,17 +89,27 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // Log signup for debugging (in production, save to database)
     console.log('New marketing signup:', {
       email: signup.email,
+      name: signup.name,
       company: signup.company,
+      role: signup.role,
+      teamSize: signup.teamSize,
+      primaryUsage: signup.primaryUsage,
       source: signup.source,
       utmParameters: signup.utmParameters,
     });
+
+    // Customize message based on signup source
+    const isBetaSignup = validatedData.source === 'beta-signup-page';
+    const successMessage = isBetaSignup 
+      ? 'Welcome to the Nixbit Beta Program! We\'ll send you access details within 24 hours.'
+      : 'Thank you for your interest! We\'ll be in touch soon.';
 
     return {
       statusCode: 201,
       headers,
       body: JSON.stringify({
         success: true,
-        message: 'Thank you for your interest! We\'ll be in touch soon.',
+        message: successMessage,
         data: {
           id: signup.id,
           email: signup.email,
@@ -105,12 +121,28 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     console.error('Marketing signup error:', error);
 
     if (error.name === 'ZodError') {
+      // Extract the first error for a user-friendly message
+      const firstError = error.errors[0];
+      let userMessage = 'Please check your form input and try again.';
+      
+      if (firstError) {
+        if (firstError.path.includes('email')) {
+          userMessage = 'Please enter a valid email address.';
+        } else if (firstError.path.includes('name')) {
+          userMessage = 'Please enter your name.';
+        } else if (firstError.path.includes('company')) {
+          userMessage = 'Please enter your company name.';
+        } else if (firstError.path.includes('teamSize')) {
+          userMessage = 'Please select a valid team size.';
+        }
+      }
+      
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({
           success: false,
-          message: 'Invalid input data',
+          message: userMessage,
           errors: error.errors,
         }),
       };
