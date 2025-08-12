@@ -36,7 +36,7 @@ const initializeTestAccounts = async () => {
   
   // Admin account
   if (!users.has('admin@nixbit.dev')) {
-    const adminPassword = await bcrypt.hash('nixbit2025', 10);
+    const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'change_me_in_production', 10);
     users.set('admin@nixbit.dev', {
       id: 'admin-nixbit',
       email: 'admin@nixbit.dev',

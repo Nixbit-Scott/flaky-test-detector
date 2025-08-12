@@ -48,7 +48,7 @@ const initializeTestAccounts = async () => {
   
   // Admin account
   if (!users.has('admin@nixbit.dev')) {
-    const adminPassword = await bcrypt.hash('nixbit2025', 10);
+    const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'change_me_in_production', 10);
     users.set('admin@nixbit.dev', {
       id: 'admin-nixbit',
       email: 'admin@nixbit.dev',
@@ -99,7 +99,7 @@ function validatePasswordStrength(password: string): { isValid: boolean; message
   }
   
   // Check for common weak passwords
-  const weakPasswords = ['password', '12345678', 'qwerty123', 'admin123', 'nixbit2025'];
+  const weakPasswords = ['password', '12345678', 'qwerty123', 'admin123', 'changeme'];
   if (weakPasswords.some(weak => password.toLowerCase().includes(weak.toLowerCase()))) {
     return { isValid: false, message: 'Password is too common or weak' };
   }

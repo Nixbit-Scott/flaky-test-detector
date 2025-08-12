@@ -12,14 +12,14 @@ const headers = {
 
 // Admin credentials
 const ADMIN_EMAIL = 'admin@nixbit.dev';
-const ADMIN_PASSWORD_HASH = '$2a$10$K7Zb8MQX9XcvW2MqO2OWAe.JXQ5PVKr2XYZM3dCVHd6RjOeGNdqHS'; // 'nixbit2025'
+// Admin password hash will be generated from environment variable
 
 // Initialize admin password hash
 let adminPasswordHash: string | null = null;
 
 const initializeAdmin = async () => {
   if (!adminPasswordHash) {
-    adminPasswordHash = await bcrypt.hash('nixbit2025', 10);
+    adminPasswordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'change_me_in_production', 10);
   }
 };
 
