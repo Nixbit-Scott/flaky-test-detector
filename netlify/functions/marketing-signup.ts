@@ -111,10 +111,64 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       utmParameters: signup.utmParameters,
     });
 
-    // Customize message based on signup source
+    // Send automated emails for beta signups
     const isBetaSignup = validatedData.source === 'beta-signup-page';
+    
+    if (isBetaSignup) {
+      try {
+        // Send welcome email to beta user
+        const welcomeEmailResponse = await fetch('/.netlify/functions/email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: signup.email,
+            template: 'betaWelcome',
+            data: {
+              name: signup.name,
+              email: signup.email,
+              company: signup.company,
+              teamSize: signup.teamSize,
+            }
+          })
+        });
+
+        // Send notification email to admin
+        const adminEmailResponse = await fetch('/.netlify/functions/email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: 'scott@nixbit.dev',
+            template: 'betaAdminNotification',
+            data: {
+              name: signup.name,
+              email: signup.email,
+              company: signup.company,
+              teamSize: signup.teamSize,
+              role: signup.role,
+              motivation: signup.motivation,
+              primaryUsage: signup.primaryUsage,
+              availableTime: signup.availableTime,
+            }
+          })
+        });
+
+        console.log('Beta signup emails sent:', {
+          welcomeEmail: welcomeEmailResponse.ok,
+          adminNotification: adminEmailResponse.ok,
+        });
+      } catch (emailError) {
+        console.error('Error sending beta signup emails:', emailError);
+        // Don't fail the signup if email fails
+      }
+    }
+
+    // Customize message based on signup source
     const successMessage = isBetaSignup 
-      ? 'Welcome to the Nixbit Beta Program! We\'ll send you access details within 24 hours.'
+      ? 'Welcome to the Nixbit Beta Program! Check your email for next steps.'
       : 'Thank you for your interest! We\'ll be in touch soon.';
 
     return {
