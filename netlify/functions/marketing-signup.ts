@@ -42,6 +42,19 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     };
   }
 
+  // Handle GET request for beta admin to fetch signups
+  if (event.httpMethod === 'GET') {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        data: signups.filter(signup => signup.source === 'beta-signup-page'),
+        total: signups.filter(signup => signup.source === 'beta-signup-page').length,
+      }),
+    };
+  }
+
   // Only allow POST for signup
   if (event.httpMethod !== 'POST') {
     return {

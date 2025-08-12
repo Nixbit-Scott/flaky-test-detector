@@ -41,40 +41,41 @@ let betaTesters: Array<{
   notes?: string;
 }> = [];
 
-// Initialize with some demo data
-const initializeDemoData = () => {
-  if (betaTesters.length === 0) {
-    betaTesters = [
-      {
-        id: 'beta-1',
-        email: 'john@startup.io',
-        name: 'John Smith',
-        company: 'Startup Inc',
-        teamSize: '6-15',
-        status: 'pending',
-        signupDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'beta-2',
-        email: 'sarah@techcorp.com',
-        name: 'Sarah Johnson',
-        company: 'TechCorp',
-        teamSize: '16-50',
-        status: 'approved',
-        signupDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'beta-3',
-        email: 'mike@devteam.co',
-        name: 'Mike Brown',
-        company: 'DevTeam Co',
-        teamSize: '1-5',
-        status: 'provisioned',
-        signupDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        provisionedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        accessExpires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ];
+// Get real beta signups by fetching from marketing-signup endpoint
+const loadRealBetaSignups = async () => {
+  try {
+    // Fetch signups from marketing-signup function
+    const response = await fetch('/.netlify/functions/marketing-signup', {
+      method: 'GET',
+      headers: headers,
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        // Convert marketing signups to beta tester format
+        betaTesters = result.data.map((signup: any) => ({
+          id: signup.id,
+          email: signup.email,
+          name: signup.name || 'Unknown',
+          company: signup.company || 'Not provided',
+          teamSize: signup.teamSize || 'Not specified',
+          status: 'pending' as const,
+          signupDate: signup.createdAt,
+          notes: [
+            signup.role ? `Role: ${signup.role}` : null,
+            signup.primaryUsage ? `CI/CD: ${signup.primaryUsage}` : null,
+            signup.availableTime ? `Time Commitment: ${signup.availableTime}` : null,
+            signup.motivation ? `Motivation: ${signup.motivation.substring(0, 100)}...` : null,
+          ].filter(Boolean).join(' | ')
+        }));
+        
+        console.log(`Loaded ${betaTesters.length} real beta signups`);
+      }
+    }
+  } catch (error) {
+    console.error('Error loading beta signups:', error);
+    // Keep empty array if fetching fails
   }
 };
 
@@ -132,7 +133,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     }
 
     // Initialize demo data
-    initializeDemoData();
+    await loadRealBetaSignups();
 
     // Handle different HTTP methods and paths
     const path = event.path.replace('/.netlify/functions/beta-admin', '') || '/';
