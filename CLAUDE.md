@@ -20,7 +20,7 @@ Target market: Development teams with 5-50 developers struggling with flaky test
 
 ### Production Login Credentials:
 - **Regular User**: `scott@nixbit.dev` / `demo1234`
-- **Admin User**: `admin@nixbit.dev` / `nixbit2025`
+- **Admin User**: `admin@nixbit.dev` / (set via ADMIN_PASSWORD env var)
 
 ### When Making Changes:
 1. **Always assume production environment** unless explicitly told otherwise
