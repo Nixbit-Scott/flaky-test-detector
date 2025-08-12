@@ -457,7 +457,7 @@
             constructor() {
                 this.baseUrl = window.location.origin;
                 this.authToken = localStorage.getItem('nixbit_admin_token');
-                this.adminPassword = localStorage.getItem('nixbit_admin_password') || 'nixbit2025'; // Default password
+                this.adminPassword = localStorage.getItem('nixbit_admin_password') || 'admin2025'; // Default password
                 this.charts = {};
                 this.marketingLoading = false; // Prevent multiple simultaneous marketing analytics calls
                 this.init();
@@ -545,7 +545,7 @@
                     // Admin-only credentials check
                     if (email === 'admin@nixbit.dev' && password === this.adminPassword) {
                         // Check if using default password
-                        if (password === 'nixbit2025') {
+                        if (password === 'admin2025') {
                             console.log('🔐 First login detected - password change required');
                             this.showPasswordChange();
                             return;
@@ -604,7 +604,7 @@
                         throw new Error('New passwords do not match');
                     }
 
-                    if (newPassword === 'nixbit2025') {
+                    if (newPassword === 'admin2025') {
                         throw new Error('Cannot use the default password');
                     }
 
