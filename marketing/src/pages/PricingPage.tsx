@@ -149,16 +149,29 @@ const PricingPage: React.FC = () => {
                   ))}
                 </ul>
 
-                <Link
-                  to={plan.cta === 'Contact Sales' ? '/contact' : '/signup'}
-                  className={`block w-full text-center py-3 px-6 rounded-lg font-semibold transition-all duration-200 ${
-                    plan.popular
-                      ? 'bg-primary-600 text-white hover:bg-primary-700'
-                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
+                {plan.cta === 'Contact Sales' ? (
+                  <Link
+                    to="/contact"
+                    className={`block w-full text-center py-3 px-6 rounded-lg font-semibold transition-all duration-200 ${
+                      plan.popular
+                        ? 'bg-primary-600 text-white hover:bg-primary-700'
+                        : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                    }`}
+                  >
+                    {plan.cta}
+                  </Link>
+                ) : (
+                  <a
+                    href="/beta-signup.html"
+                    className={`block w-full text-center py-3 px-6 rounded-lg font-semibold transition-all duration-200 ${
+                      plan.popular
+                        ? 'bg-primary-600 text-white hover:bg-primary-700'
+                        : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                    }`}
+                  >
+                    {plan.cta}
+                  </a>
+                )}
               </motion.div>
             ))}
           </div>

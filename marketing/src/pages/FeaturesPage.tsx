@@ -231,9 +231,9 @@ const FeaturesPage: React.FC = () => {
               from your development workflow. Ship with confidence.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link to="/signup" className="btn-primary">
+              <a href="/beta-signup.html" className="btn-primary">
                 Start Free Beta
-              </Link>
+              </a>
               <Link to="/pricing" className="btn-outline">
                 View Pricing
               </Link>
@@ -401,12 +401,12 @@ const FeaturesPage: React.FC = () => {
               Join 50+ teams already saving 5+ hours per week with AI-powered test reliability.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link 
-                to="/signup" 
+              <a 
+                href="/beta-signup.html" 
                 className="bg-white text-primary-600 hover:bg-gray-50 px-8 py-3 rounded-lg font-semibold transition-colors"
               >
                 Start Free Beta
-              </Link>
+              </a>
               <Link 
                 to="/contact" 
                 className="border border-primary-300 text-white hover:bg-primary-700 px-8 py-3 rounded-lg font-semibold transition-colors"

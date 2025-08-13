@@ -71,13 +71,13 @@ const HeroSection: React.FC = () => {
                 transition={{ duration: 0.5, delay: 0.7 }}
                 className="flex flex-col sm:flex-row gap-4 mb-8"
               >
-                <Link
-                  to="/signup"
+                <a
+                  href="/beta-signup.html"
                   className="btn-primary btn-large group"
                 >
                   Start Free Beta
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </a>
                 
                 <button className="btn-outline btn-large group">
                   <Play className="mr-2 h-5 w-5" />
