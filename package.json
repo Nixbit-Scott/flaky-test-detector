@@ -38,7 +38,7 @@
     "typecheck:admin": "cd admin-frontend && npm run typecheck",
     "typecheck:marketing": "cd marketing && npm run typecheck",
     "setup": "npm install && npm run build:shared",
-    "build:deploy": "mkdir -p dist && cp -r marketing/dist/* dist/ && mkdir -p dist/app && cp -r frontend/dist/* dist/app/ && mkdir -p dist/admin && cp -r admin-frontend/dist/* dist/admin/ && cp beta-signup.html dist/"
+    "build:deploy": "mkdir -p dist && cp -r marketing/dist/* dist/ && mkdir -p dist/app && cp -r frontend/dist/* dist/app/ && mkdir -p dist/admin && cp -r admin-frontend/dist/* dist/admin/ && cp marketing/public/beta-signup.html dist/ 2>/dev/null || true"
   },
   "devDependencies": {
     "@netlify/functions": "^4.1.15",
