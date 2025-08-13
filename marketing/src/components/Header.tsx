@@ -61,12 +61,12 @@ const Header: React.FC = () => {
             >
               Log in
             </Link>
-            <a
-              href="/beta-signup.html"
+            <Link
+              to="/beta-signup"
               className="btn-primary text-sm"
             >
               Start Free Beta
-            </a>
+            </Link>
           </div>
 
           {/* Mobile menu button */}
@@ -115,13 +115,13 @@ const Header: React.FC = () => {
                 >
                   Log in
                 </Link>
-                <a
-                  href="/beta-signup.html"
+                <Link
+                  to="/beta-signup"
                   className="block w-full text-center btn-primary"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Start Free Beta
-                </a>
+                </Link>
               </div>
             </div>
           </motion.div>

@@ -107,7 +107,7 @@ export const ssoRateLimitMiddleware = rateLimit({
   keyGenerator: (req: Request) => {
     // Use organization + IP for rate limiting to prevent cross-org attacks
     const organizationId = req.params?.organizationId || req.body?.organizationId;
-    const ip = req.ip || '';
+    const ip = ipKeyGenerator(req); // Use ipKeyGenerator helper for IPv6 support
     return organizationId ? `sso_${organizationId}_${ip}` : `sso_${ip}`;
   },
   store: redisClient.isReady ? new RedisStore({
@@ -146,7 +146,7 @@ export const ssoCallbackRateLimitMiddleware = rateLimit({
   keyGenerator: (req: Request) => {
     // Use provider + IP for rate limiting
     const providerId = req.params?.providerId;
-    const ip = req.ip || '';
+    const ip = ipKeyGenerator(req); // Use ipKeyGenerator helper for IPv6 support
     return providerId ? `sso_callback_${providerId}_${ip}` : `sso_callback_${ip}`;
   },
   store: redisClient.isReady ? new RedisStore({
@@ -170,7 +170,7 @@ export const ssoConfigRateLimitMiddleware = rateLimit({
   keyGenerator: (req: Request) => {
     // Use user ID + IP for authenticated rate limiting
     const userId = (req as any).user?.id;
-    const ip = req.ip || '';
+    const ip = ipKeyGenerator(req); // Use ipKeyGenerator helper for IPv6 support
     return userId ? `sso_config_${userId}_${ip}` : `sso_config_${ip}`;
   },
   store: redisClient.isReady ? new RedisStore({
