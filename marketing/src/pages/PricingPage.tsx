@@ -4,7 +4,16 @@ import { motion } from 'framer-motion'
 import { CheckCircle, Zap, Star, Crown } from 'lucide-react'
 
 const PricingPage: React.FC = () => {
-  const plans = [
+  const plans: Array<{
+    name: string;
+    price: number;
+    description: string;
+    icon: any;
+    features: string[];
+    cta: string;
+    popular: boolean;
+    priceNote?: string;
+  }> = [
     {
       name: 'Starter',
       price: 29,
@@ -26,11 +35,11 @@ const PricingPage: React.FC = () => {
       description: 'Best for growing development teams',
       icon: Star,
       features: [
-        'Up to 25 developers',
+        'Up to 20 developers',
+        'Up to 20 repositories',
         'Advanced AI detection',
         'Slack/Teams integration',
         'Priority support',
-        'Unlimited repositories',
         'Custom retry policies',
         'Analytics dashboard',
       ],
@@ -43,17 +52,19 @@ const PricingPage: React.FC = () => {
       description: 'For large organizations with custom needs',
       icon: Crown,
       features: [
-        'Unlimited developers',
+        '100 developers included',
+        '$10/month per additional dev',
+        'Unlimited repositories',
         'Advanced predictive analytics',
         'Custom integrations',
         'Dedicated support',
-        'On-premise deployment',
         'SSO/SAML integration',
         'SLA guarantees',
         'Custom training',
       ],
       cta: 'Contact Sales',
       popular: false,
+      priceNote: '+ $10/dev over 100',
     },
   ]
 
@@ -121,6 +132,11 @@ const PricingPage: React.FC = () => {
                       ${plan.price}
                     </span>
                     <span className="text-gray-600 ml-1">/month</span>
+                    {plan.priceNote && (
+                      <div className="text-sm text-gray-500 mt-1">
+                        {plan.priceNote}
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -7,6 +7,7 @@ export interface PlanLimits {
   maxRepositories: number;
   dataRetentionDays: number;
   features: PlanFeature[];
+  additionalMemberCost?: number; // Cost per additional member in cents
 }
 
 export type PlanFeature = 
@@ -68,6 +69,7 @@ export interface SubscriptionPlanDetails {
     integrations: PlanFeature[];
     support: PlanFeature[];
   };
+  priceNote?: string; // Additional pricing information
 }
 
 export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanDetails> = {
@@ -109,9 +111,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanDetail
     isPopular: true,
     limits: {
       maxProjects: 25,
-      maxMembers: 25,
+      maxMembers: 20,
       maxTeams: 10,
-      maxRepositories: 999,
+      maxRepositories: 20,
       dataRetentionDays: 365,
       features: [
         'ai_detection_basic',
@@ -150,15 +152,17 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanDetail
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 29900, // $299/month
+    price: 29900, // $299/month for up to 100 devs
     description: 'For large organizations with custom needs',
     isPopular: false,
+    priceNote: 'Includes 100 developers. $10/month per additional developer',
     limits: {
       maxProjects: 999,
-      maxMembers: 999,
+      maxMembers: 100, // Base includes 100, can add more at $10/dev
       maxTeams: 50,
-      maxRepositories: 999,
+      maxRepositories: 999, // Unlimited repos
       dataRetentionDays: 1095, // 3 years
+      additionalMemberCost: 1000, // $10 per additional member beyond 100
       features: [
         'ai_detection_basic',
         'ai_detection_advanced',
