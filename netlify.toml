@@ -16,12 +16,6 @@
   to = "/.netlify/functions/api"
   status = 200
 
-# Beta signup page - serve static HTML file directly
-[[redirects]]
-  from = "/beta-signup.html"
-  to = "/beta-signup.html"
-  status = 200
-
 # Beta signup page redirect (without .html)
 [[redirects]]
   from = "/beta-signup"
