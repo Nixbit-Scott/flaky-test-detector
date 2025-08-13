@@ -120,9 +120,9 @@ flaky-test-detector/
 
 ## Pricing
 
-- **Starter**: $29/month - Up to 5 repositories
-- **Team**: $79/month - Up to 25 repositories  
-- **Enterprise**: $149/month - Unlimited repositories + advanced features
+- **Starter**: $29/month - Up to 5 developers, 1 repository
+- **Team**: $99/month - Up to 20 developers, 20 repositories
+- **Enterprise**: $299/month - 100 developers included (+ $10/month per additional developer), unlimited repositories
 
 ## Support
 
