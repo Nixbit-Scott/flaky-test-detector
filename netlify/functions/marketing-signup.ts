@@ -116,8 +116,11 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     
     if (isBetaSignup) {
       try {
+        // Get the site URL from environment or use production URL
+        const siteUrl = process.env.URL || 'https://nixbit.dev';
+        
         // Send welcome email to beta user
-        const welcomeEmailResponse = await fetch('/.netlify/functions/email', {
+        const welcomeEmailResponse = await fetch(`${siteUrl}/.netlify/functions/email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -135,7 +138,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         });
 
         // Send notification email to admin
-        const adminEmailResponse = await fetch('/.netlify/functions/email', {
+        const adminEmailResponse = await fetch(`${siteUrl}/.netlify/functions/email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
