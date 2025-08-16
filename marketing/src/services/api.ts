@@ -1,7 +1,30 @@
 import axios from 'axios';
 import { MarketingSignupRequest } from '@shared/schemas/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// Determine the correct API base URL based on environment
+const getApiBaseUrl = () => {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // In production (Netlify), use Netlify functions
+  if (import.meta.env.PROD || window.location.hostname.includes('netlify') || window.location.hostname === 'nixbit.dev') {
+    return '/.netlify/functions';
+  }
+  
+  // In development, use local API
+  return 'http://localhost:3001/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+console.log('[API] Using API base URL:', API_BASE_URL);
+console.log('[API] Environment:', {
+  PROD: import.meta.env.PROD,
+  hostname: window.location.hostname,
+  VITE_API_URL: import.meta.env.VITE_API_URL
+});
 
 // Create axios instance with default config
 const api = axios.create({
