@@ -462,75 +462,9 @@ async function handleAuditLogs(pathSegments: string[], event: HandlerEvent) {
   const from = query.from ? new Date(query.from) : null;
   const to = query.to ? new Date(query.to) : null;
 
-  // Mock audit log data
-  const allLogs = [
-    {
-      id: 'audit-1',
-      userId: 'user-1',
-      action: 'user_login',
-      resourceType: 'user',
-      resourceId: 'user-1',
-      category: 'authentication',
-      severity: 'info',
-      description: 'User successfully logged in',
-      ipAddress: '192.168.1.100',
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      details: {
-        loginMethod: 'email_password',
-        sessionId: 'sess_abc123'
-      },
-      createdAt: new Date(Date.now() - 300000).toISOString(),
-      user: {
-        id: 'user-1',
-        email: 'john@example.com',
-        name: 'John Doe'
-      }
-    },
-    {
-      id: 'audit-2',
-      userId: 'admin-nixbit',
-      action: 'organization_suspend',
-      resourceType: 'organization',
-      resourceId: 'org-123',
-      category: 'organization_management',
-      severity: 'warn',
-      description: 'Organization suspended for policy violation',
-      ipAddress: '10.0.0.1',
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      details: {
-        reason: 'Terms of service violation',
-        suspensionType: 'temporary'
-      },
-      beforeState: {
-        status: 'active',
-        plan: 'enterprise'
-      },
-      afterState: {
-        status: 'suspended',
-        plan: 'enterprise',
-        suspendedAt: new Date().toISOString()
-      },
-      createdAt: new Date(Date.now() - 600000).toISOString(),
-      user: {
-        id: 'admin-nixbit',
-        email: ADMIN_EMAIL,
-        name: 'Nixbit Administrator'
-      }
-    },
-    {
-      id: 'audit-3',
-      action: 'system_backup',
-      resourceType: 'system',
-      category: 'system',
-      severity: 'info',
-      description: 'Automated system backup completed successfully',
-      details: {
-        backupSize: '2.4GB',
-        backupLocation: 's3://nixbit-backups/2024-08-01',
-        duration: '45 minutes'
-      },
-      createdAt: new Date(Date.now() - 3600000).toISOString()
-    }
+  // Start with completely empty audit logs for fresh system
+  const allLogs: any[] = [
+    // Audit logs will appear here as users interact with the system
     // More audit logs will appear here as the system is used
   ];
 
