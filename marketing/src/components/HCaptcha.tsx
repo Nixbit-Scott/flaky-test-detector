@@ -57,28 +57,43 @@ const HCaptcha = React.forwardRef<HCaptchaRef, HCaptchaProps>(({
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !window.hcaptcha || !hcaptchaRef.current || widgetId) {
+    if (!isLoaded || !window.hcaptcha || !hcaptchaRef.current) {
       return;
     }
 
-    // Render hCaptcha widget
-    const id = window.hcaptcha.render(hcaptchaRef.current, {
-      sitekey: siteKey,
-      callback: (token: string) => {
-        onVerify(token);
-      },
-      'error-callback': () => {
-        onError?.();
-      },
-      'expired-callback': () => {
-        onExpire?.();
-      },
-      size,
-      theme,
-    });
+    // Prevent multiple renders
+    if (widgetId !== null) {
+      console.log('hCaptcha already rendered with widget ID:', widgetId);
+      return;
+    }
 
-    setWidgetId(id);
-  }, [isLoaded, siteKey, onVerify, onError, onExpire, size, theme]);
+    try {
+      console.log('Rendering hCaptcha with site key:', siteKey);
+      // Render hCaptcha widget
+      const id = window.hcaptcha.render(hcaptchaRef.current, {
+        sitekey: siteKey,
+        callback: (token: string) => {
+          console.log('hCaptcha verified successfully');
+          onVerify(token);
+        },
+        'error-callback': () => {
+          console.error('hCaptcha error callback triggered');
+          onError?.();
+        },
+        'expired-callback': () => {
+          console.log('hCaptcha expired');
+          onExpire?.();
+        },
+        size,
+        theme,
+      });
+
+      console.log('hCaptcha rendered with widget ID:', id);
+      setWidgetId(id);
+    } catch (error) {
+      console.error('Failed to render hCaptcha:', error);
+    }
+  }, [isLoaded, siteKey]); // Remove callback dependencies to prevent re-renders
 
   // Reset the captcha
   const reset = () => {
