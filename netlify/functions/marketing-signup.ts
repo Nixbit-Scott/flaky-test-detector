@@ -53,33 +53,37 @@ if (supabaseUrl && supabaseServiceKey) {
 // Fallback in-memory store if database is not available
 let signups: Array<MarketingSignupRequest & { id: string; createdAt: string }> = [];
 
-// CAPTCHA validation function
-async function validateCaptcha(token: string): Promise<boolean> {
-  console.log('[CAPTCHA] Starting validation process...');
+// Turnstile validation function
+async function validateTurnstile(token: string): Promise<boolean> {
+  console.log('[TURNSTILE] Starting validation process...');
   
   if (!token) {
-    console.error('[CAPTCHA] No token provided');
+    console.error('[TURNSTILE] No token provided');
     return false;
   }
 
-  console.log('[CAPTCHA] Token received (length):', token.length);
-  console.log('[CAPTCHA] Token preview:', token.substring(0, 20) + '...');
+  console.log('[TURNSTILE] Token received (length):', token.length);
+  console.log('[TURNSTILE] Token preview:', token.substring(0, 20) + '...');
 
-  const secretKey = process.env.HCAPTCHA_SECRET_KEY;
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
   if (!secretKey) {
-    console.warn('[CAPTCHA] HCAPTCHA_SECRET_KEY not configured, skipping CAPTCHA validation');
-    return true; // Allow signup if CAPTCHA is not configured (for development)
+    console.warn('[TURNSTILE] TURNSTILE_SECRET_KEY not configured, skipping verification');
+    return true; // Allow signup if Turnstile is not configured (for development)
   }
 
-  console.log('[CAPTCHA] Secret key is configured');
+  console.log('[TURNSTILE] Secret key is configured');
 
   try {
-    console.log('[CAPTCHA] Making request to hCaptcha API...');
+    console.log('[TURNSTILE] Making request to Cloudflare Turnstile API...');
     
-    const requestBody = `secret=${encodeURIComponent(secretKey)}&response=${encodeURIComponent(token)}`;
-    console.log('[CAPTCHA] Request body length:', requestBody.length);
+    const requestBody = new URLSearchParams({
+      secret: secretKey,
+      response: token,
+    });
     
-    const response = await fetch('https://api.hcaptcha.com/siteverify', {
+    console.log('[TURNSTILE] Request body length:', requestBody.toString().length);
+    
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -87,36 +91,37 @@ async function validateCaptcha(token: string): Promise<boolean> {
       body: requestBody,
     });
 
-    console.log('[CAPTCHA] API response status:', response.status, response.statusText);
+    console.log('[TURNSTILE] API response status:', response.status, response.statusText);
 
     if (!response.ok) {
-      console.error('[CAPTCHA] API response not OK:', response.status, response.statusText);
+      console.error('[TURNSTILE] API response not OK:', response.status, response.statusText);
       const errorText = await response.text();
-      console.error('[CAPTCHA] Error response body:', errorText);
+      console.error('[TURNSTILE] Error response body:', errorText);
       return false;
     }
 
     const data = await response.json();
-    console.log('[CAPTCHA] Full validation response:', JSON.stringify(data, null, 2));
+    console.log('[TURNSTILE] Full validation response:', JSON.stringify(data, null, 2));
     
     if (!data.success) {
-      console.error('[CAPTCHA] Validation failed with error codes:', data['error-codes']);
-      console.error('[CAPTCHA] Error details:', {
+      console.error('[TURNSTILE] Validation failed with error codes:', data['error-codes']);
+      console.error('[TURNSTILE] Common error codes:', {
+        'missing-input-secret': 'The secret parameter is missing',
         'invalid-input-secret': 'The secret parameter is invalid or malformed',
+        'missing-input-response': 'The response parameter is missing',
         'invalid-input-response': 'The response parameter is invalid or malformed',
         'bad-request': 'The request is invalid or malformed',
         'timeout-or-duplicate': 'The response is no longer valid: either is too old or has been used previously',
-        'missing-input-secret': 'The secret parameter is missing',
-        'missing-input-response': 'The response parameter is missing'
+        'internal-error': 'An internal error happened while validating the response'
       });
     } else {
-      console.log('[CAPTCHA] Validation successful!');
+      console.log('[TURNSTILE] Validation successful!');
     }
     
     return data.success === true;
   } catch (error) {
-    console.error('[CAPTCHA] Validation error:', error);
-    console.error('[CAPTCHA] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('[TURNSTILE] Validation error:', error);
+    console.error('[TURNSTILE] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return false;
   }
 }
@@ -200,26 +205,26 @@ const handler: Handler = async (event: HandlerEvent) => {
     const body = JSON.parse(event.body || '{}');
     const validatedData = MarketingSignupSchema.parse(body);
 
-    // Validate CAPTCHA if token is provided
+    // Validate Turnstile if token is provided
     if (validatedData.captchaToken) {
-      console.log('[SIGNUP] CAPTCHA token found, validating...');
-      const captchaValid = await validateCaptcha(validatedData.captchaToken);
-      console.log('[SIGNUP] CAPTCHA validation result:', captchaValid);
+      console.log('[SIGNUP] Turnstile token found, validating...');
+      const turnstileValid = await validateTurnstile(validatedData.captchaToken);
+      console.log('[SIGNUP] Turnstile validation result:', turnstileValid);
       
-      if (!captchaValid) {
-        console.error('[SIGNUP] CAPTCHA validation failed, rejecting signup');
+      if (!turnstileValid) {
+        console.error('[SIGNUP] Turnstile validation failed, rejecting signup');
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({
             success: false,
-            message: 'CAPTCHA verification failed. Please try again.',
+            message: 'Verification failed. Please try again.',
           }),
         };
       }
-      console.log('[SIGNUP] CAPTCHA validation passed, proceeding with signup');
+      console.log('[SIGNUP] Turnstile validation passed, proceeding with signup');
     } else {
-      console.log('[SIGNUP] No CAPTCHA token provided');
+      console.log('[SIGNUP] No verification token provided');
     }
 
     // Check if email already exists
@@ -309,7 +314,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           utm_parameters: validatedData.utmParameters || {},
           metadata: {
             ...validatedData.metadata || {},
-            captchaVerified: !!validatedData.captchaToken,
+            turnstileVerified: !!validatedData.captchaToken,
           },
           status: 'pending',
         };

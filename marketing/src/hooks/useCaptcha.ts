@@ -9,10 +9,9 @@ export const useCaptcha = (options: UseCaptchaOptions = {}) => {
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const errorCountRef = useRef(0);
-  const lastErrorTimeRef = useRef<number>(0);
 
   const handleCaptchaVerify = useCallback((token: string) => {
-    console.log('[useCaptcha] Verification successful, resetting error count');
+    console.log('[useCaptcha] Turnstile verification successful');
     setCaptchaToken(token);
     setIsCaptchaVerified(true);
     setCaptchaError(null);
@@ -20,17 +19,14 @@ export const useCaptcha = (options: UseCaptchaOptions = {}) => {
   }, []);
 
   const handleCaptchaError = useCallback(() => {
-    console.error('[useCaptcha] CAPTCHA error occurred');
+    console.error('[useCaptcha] Turnstile verification error');
     errorCountRef.current += 1;
-    lastErrorTimeRef.current = Date.now();
     
-    let errorMessage = 'CAPTCHA verification failed. Please try again.';
+    let errorMessage = 'Verification failed. Please try again.';
     
-    // Provide specific error messages based on error count
+    // Simpler error handling for Turnstile (it's more reliable than hCaptcha)
     if (errorCountRef.current >= 3) {
-      errorMessage = 'Multiple verification failures detected. You may be rate limited. Please wait a moment before trying again.';
-    } else if (errorCountRef.current >= 5) {
-      errorMessage = 'Too many verification attempts. Please refresh the page and try again.';
+      errorMessage = 'Multiple verification failures. Please refresh the page and try again.';
     }
     
     setCaptchaError(errorMessage);
@@ -40,8 +36,8 @@ export const useCaptcha = (options: UseCaptchaOptions = {}) => {
   }, [options]);
 
   const handleCaptchaExpire = useCallback(() => {
-    console.log('[useCaptcha] CAPTCHA expired');
-    const errorMessage = 'CAPTCHA expired. Please verify again.';
+    console.log('[useCaptcha] Turnstile token expired');
+    const errorMessage = 'Verification expired. Please verify again.';
     setCaptchaError(errorMessage);
     setCaptchaToken(null);
     setIsCaptchaVerified(false);
@@ -49,7 +45,7 @@ export const useCaptcha = (options: UseCaptchaOptions = {}) => {
   }, [options]);
 
   const resetCaptcha = useCallback(() => {
-    console.log('[useCaptcha] Resetting CAPTCHA state');
+    console.log('[useCaptcha] Resetting verification state');
     setCaptchaToken(null);
     setIsCaptchaVerified(false);
     setCaptchaError(null);

@@ -6,7 +6,7 @@ import {
   Award, TrendingUp, Globe, Mail
 } from 'lucide-react';
 import { useMarketingSignup } from '../hooks/useMarketingSignup';
-import HCaptcha from '../components/HCaptcha';
+import Turnstile from '../components/Turnstile';
 import { useCaptcha } from '../hooks/useCaptcha';
 
 interface BetaApplication {
@@ -714,11 +714,12 @@ export const BetaSignupPage: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-3">
                         Security Verification *
                       </label>
-                      <HCaptcha
-                        siteKey={import.meta.env.VITE_HCAPTCHA_SITE_KEY || '884a8fb6-2f40-459b-83c6-4e0c4d360ef6'}
+                      <Turnstile
+                        siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAAiUl7SBtNg-xG1_'}
                         onVerify={handleCaptchaVerify}
                         onError={handleCaptchaError}
                         onExpire={handleCaptchaExpire}
+                        theme="auto"
                         className="flex justify-center"
                       />
                       {captchaError && (
