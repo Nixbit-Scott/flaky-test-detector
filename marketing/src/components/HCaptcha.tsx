@@ -36,14 +36,24 @@ const HCaptcha = React.forwardRef<HCaptchaRef, HCaptchaProps>(({
   const retryCountRef = useRef(0);
   const lastErrorTimeRef = useRef<number>(0);
   const isDestroyedRef = useRef(false);
+  const onVerifyRef = useRef(onVerify);
+  const onErrorRef = useRef(onError);
+  const onExpireRef = useRef(onExpire);
+
+  // Update refs when props change
+  useEffect(() => {
+    onVerifyRef.current = onVerify;
+    onErrorRef.current = onError;
+    onExpireRef.current = onExpire;
+  });
 
   // Stable callback refs to prevent re-renders
   const stableOnVerify = useCallback((token: string) => {
     console.log('[hCaptcha] Verification successful, token received');
     retryCountRef.current = 0;
     setRenderError(null);
-    onVerify(token);
-  }, [onVerify]);
+    onVerifyRef.current(token);
+  }, []);
 
   const stableOnError = useCallback(() => {
     console.error('[hCaptcha] Error callback triggered');
@@ -55,13 +65,13 @@ const HCaptcha = React.forwardRef<HCaptchaRef, HCaptchaProps>(({
       setRenderError('Too many verification attempts. Please wait before trying again.');
     }
     
-    onError?.();
-  }, [onError]);
+    onErrorRef.current?.();
+  }, []);
 
   const stableOnExpire = useCallback(() => {
     console.log('[hCaptcha] Token expired');
-    onExpire?.();
-  }, [onExpire]);
+    onExpireRef.current?.();
+  }, []);
 
   // Script loading effect
   useEffect(() => {
@@ -160,7 +170,7 @@ const HCaptcha = React.forwardRef<HCaptchaRef, HCaptchaProps>(({
         widgetIdRef.current = null;
       }
     };
-  }, [isLoaded, siteKey, stableOnVerify, stableOnError, stableOnExpire, size, theme]);
+  }, [isLoaded, siteKey, size, theme]);
 
   // Component unmount cleanup
   useEffect(() => {
