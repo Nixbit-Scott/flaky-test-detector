@@ -13,7 +13,7 @@ export function useMarketingSignup(options: UseMarketingSignupOptions = {}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: async (data: Omit<MarketingSignupRequest, 'source' | 'utmParameters'>) => {
+    mutationFn: async (data: Omit<MarketingSignupRequest, 'source' | 'utmParameters'> & { captchaToken?: string }) => {
       setIsSubmitting(true);
       
       // Enhance data with tracking information
@@ -30,6 +30,7 @@ export function useMarketingSignup(options: UseMarketingSignupOptions = {}) {
         ...data,
         source: determineTrafficSource(),
         utmParameters: cleanUtmParams,
+        captchaToken: data.captchaToken,
       };
 
       return marketingApi.submitSignup(enhancedData);

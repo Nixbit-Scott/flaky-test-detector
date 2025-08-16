@@ -134,6 +134,7 @@ export const MarketingSignupSchema = z.object({
   interestedFeatures: z.array(z.string()).optional(),
   source: z.string().optional(),
   utmParameters: z.record(z.string()).optional(),
+  captchaToken: z.string().optional(),
 });
 
 export const UpdateMarketingSignupSchema = z.object({

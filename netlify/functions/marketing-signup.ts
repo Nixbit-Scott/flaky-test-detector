@@ -31,6 +31,7 @@ const MarketingSignupSchema = z.object({
   source: z.string().optional(),
   utmParameters: z.record(z.string()).optional(),
   metadata: z.record(z.any()).optional(),
+  captchaToken: z.string().optional(),
 });
 
 type MarketingSignupRequest = z.infer<typeof MarketingSignupSchema>;
@@ -51,6 +52,35 @@ if (supabaseUrl && supabaseServiceKey) {
 
 // Fallback in-memory store if database is not available
 let signups: Array<MarketingSignupRequest & { id: string; createdAt: string }> = [];
+
+// CAPTCHA validation function
+async function validateCaptcha(token: string): Promise<boolean> {
+  if (!token) {
+    return false;
+  }
+
+  const secretKey = process.env.HCAPTCHA_SECRET_KEY;
+  if (!secretKey) {
+    console.warn('HCAPTCHA_SECRET_KEY not configured, skipping CAPTCHA validation');
+    return true; // Allow signup if CAPTCHA is not configured (for development)
+  }
+
+  try {
+    const response = await fetch('https://hcaptcha.com/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `secret=${secretKey}&response=${token}`,
+    });
+
+    const data = await response.json();
+    return data.success === true;
+  } catch (error) {
+    console.error('CAPTCHA validation error:', error);
+    return false;
+  }
+}
 
 const handler: Handler = async (event: HandlerEvent) => {
   // Handle CORS preflight
@@ -130,6 +160,21 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Parse and validate request body
     const body = JSON.parse(event.body || '{}');
     const validatedData = MarketingSignupSchema.parse(body);
+
+    // Validate CAPTCHA if token is provided
+    if (validatedData.captchaToken) {
+      const captchaValid = await validateCaptcha(validatedData.captchaToken);
+      if (!captchaValid) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            message: 'CAPTCHA verification failed. Please try again.',
+          }),
+        };
+      }
+    }
 
     // Check if email already exists
     let existingSignup: { id: string; email: string; createdAt: string } | null = null;
@@ -216,7 +261,10 @@ const handler: Handler = async (event: HandlerEvent) => {
           communication_preference: validatedData.communicationPreference || [],
           source: validatedData.source || 'unknown',
           utm_parameters: validatedData.utmParameters || {},
-          metadata: validatedData.metadata || {},
+          metadata: {
+            ...validatedData.metadata || {},
+            captchaVerified: !!validatedData.captchaToken,
+          },
           status: 'pending',
         };
 
