@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 
 declare global {
   interface Window {
@@ -30,77 +30,168 @@ const HCaptcha = React.forwardRef<HCaptchaRef, HCaptchaProps>(({
   className = '',
 }, ref) => {
   const hcaptchaRef = useRef<HTMLDivElement>(null);
-  const [widgetId, setWidgetId] = useState<string | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const retryCountRef = useRef(0);
+  const lastErrorTimeRef = useRef<number>(0);
+  const isDestroyedRef = useRef(false);
 
+  // Stable callback refs to prevent re-renders
+  const stableOnVerify = useCallback((token: string) => {
+    console.log('[hCaptcha] Verification successful, token received');
+    retryCountRef.current = 0;
+    setRenderError(null);
+    onVerify(token);
+  }, [onVerify]);
+
+  const stableOnError = useCallback(() => {
+    console.error('[hCaptcha] Error callback triggered');
+    retryCountRef.current += 1;
+    lastErrorTimeRef.current = Date.now();
+    
+    // Implement exponential backoff for rate limiting
+    if (retryCountRef.current >= 3) {
+      setRenderError('Too many verification attempts. Please wait before trying again.');
+    }
+    
+    onError?.();
+  }, [onError]);
+
+  const stableOnExpire = useCallback(() => {
+    console.log('[hCaptcha] Token expired');
+    onExpire?.();
+  }, [onExpire]);
+
+  // Script loading effect
   useEffect(() => {
     // Check if hCaptcha script is already loaded
     if (window.hcaptcha) {
+      console.log('[hCaptcha] Script already loaded');
       setIsLoaded(true);
       return;
     }
 
+    console.log('[hCaptcha] Loading script...');
     // Load hCaptcha script
     const script = document.createElement('script');
     script.src = 'https://js.hcaptcha.com/1/api.js';
     script.async = true;
     script.defer = true;
-    script.onload = () => setIsLoaded(true);
+    script.onload = () => {
+      console.log('[hCaptcha] Script loaded successfully');
+      setIsLoaded(true);
+    };
+    script.onerror = () => {
+      console.error('[hCaptcha] Failed to load script');
+      setRenderError('Failed to load verification service');
+    };
     document.head.appendChild(script);
 
     return () => {
       // Cleanup script if component unmounts
+      console.log('[hCaptcha] Cleaning up script');
       if (document.head.contains(script)) {
         document.head.removeChild(script);
       }
     };
   }, []);
 
+  // Widget rendering effect
   useEffect(() => {
-    if (!isLoaded || !window.hcaptcha || !hcaptchaRef.current) {
+    if (!isLoaded || !window.hcaptcha || !hcaptchaRef.current || isDestroyedRef.current) {
       return;
     }
 
-    // Prevent multiple renders
-    if (widgetId !== null) {
-      console.log('hCaptcha already rendered with widget ID:', widgetId);
+    // Prevent multiple renders - check if widget already exists
+    if (widgetIdRef.current !== null) {
+      console.log('[hCaptcha] Widget already rendered with ID:', widgetIdRef.current);
+      return;
+    }
+
+    // Rate limiting check - implement circuit breaker
+    const timeSinceLastError = Date.now() - lastErrorTimeRef.current;
+    const backoffTime = Math.pow(2, retryCountRef.current) * 1000; // Exponential backoff
+    
+    if (retryCountRef.current >= 3 && timeSinceLastError < backoffTime) {
+      console.log('[hCaptcha] Rate limited, waiting for backoff period');
+      setRenderError(`Please wait ${Math.ceil((backoffTime - timeSinceLastError) / 1000)} seconds before trying again.`);
       return;
     }
 
     try {
-      console.log('Rendering hCaptcha with site key:', siteKey);
+      console.log('[hCaptcha] Rendering widget with site key:', siteKey);
+      
+      // Ensure the container is empty
+      if (hcaptchaRef.current.hasChildNodes()) {
+        console.log('[hCaptcha] Clearing existing widget content');
+        hcaptchaRef.current.innerHTML = '';
+      }
+      
       // Render hCaptcha widget
       const id = window.hcaptcha.render(hcaptchaRef.current, {
         sitekey: siteKey,
-        callback: (token: string) => {
-          console.log('hCaptcha verified successfully');
-          onVerify(token);
-        },
-        'error-callback': () => {
-          console.error('hCaptcha error callback triggered');
-          onError?.();
-        },
-        'expired-callback': () => {
-          console.log('hCaptcha expired');
-          onExpire?.();
-        },
+        callback: stableOnVerify,
+        'error-callback': stableOnError,
+        'expired-callback': stableOnExpire,
         size,
         theme,
       });
 
-      console.log('hCaptcha rendered with widget ID:', id);
-      setWidgetId(id);
+      console.log('[hCaptcha] Widget rendered successfully with ID:', id);
+      widgetIdRef.current = id;
+      setRenderError(null);
     } catch (error) {
-      console.error('Failed to render hCaptcha:', error);
+      console.error('[hCaptcha] Failed to render widget:', error);
+      setRenderError('Failed to initialize verification. Please refresh the page.');
+      retryCountRef.current += 1;
+      lastErrorTimeRef.current = Date.now();
     }
-  }, [isLoaded, siteKey]); // Remove callback dependencies to prevent re-renders
+
+    // Cleanup function to destroy widget when effect reruns or component unmounts
+    return () => {
+      if (widgetIdRef.current !== null && window.hcaptcha) {
+        try {
+          console.log('[hCaptcha] Destroying widget:', widgetIdRef.current);
+          window.hcaptcha.remove(widgetIdRef.current);
+        } catch (error) {
+          console.warn('[hCaptcha] Failed to destroy widget:', error);
+        }
+        widgetIdRef.current = null;
+      }
+    };
+  }, [isLoaded, siteKey, stableOnVerify, stableOnError, stableOnExpire, size, theme]);
+
+  // Component unmount cleanup
+  useEffect(() => {
+    return () => {
+      console.log('[hCaptcha] Component unmounting, marking as destroyed');
+      isDestroyedRef.current = true;
+      if (widgetIdRef.current !== null && window.hcaptcha) {
+        try {
+          console.log('[hCaptcha] Final cleanup of widget:', widgetIdRef.current);
+          window.hcaptcha.remove(widgetIdRef.current);
+        } catch (error) {
+          console.warn('[hCaptcha] Failed to cleanup widget on unmount:', error);
+        }
+        widgetIdRef.current = null;
+      }
+    };
+  }, []);
 
   // Reset the captcha
-  const reset = () => {
-    if (window.hcaptcha && widgetId) {
-      window.hcaptcha.reset(widgetId);
+  const reset = useCallback(() => {
+    if (window.hcaptcha && widgetIdRef.current) {
+      try {
+        console.log('[hCaptcha] Resetting widget:', widgetIdRef.current);
+        window.hcaptcha.reset(widgetIdRef.current);
+        setRenderError(null);
+        retryCountRef.current = 0;
+      } catch (error) {
+        console.error('[hCaptcha] Failed to reset widget:', error);
+      }
     }
-  };
+  }, []);
 
   // Expose reset method via useImperativeHandle with proper typing
   React.useImperativeHandle(ref, () => ({
@@ -110,6 +201,16 @@ const HCaptcha = React.forwardRef<HCaptchaRef, HCaptchaProps>(({
   return (
     <div className={className}>
       <div ref={hcaptchaRef} />
+      {renderError && (
+        <div className="text-red-600 text-sm mt-2 text-center">
+          {renderError}
+        </div>
+      )}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="text-xs text-gray-500 mt-1 text-center">
+          Widget ID: {widgetIdRef.current || 'none'} | Retries: {retryCountRef.current}
+        </div>
+      )}
     </div>
   );
 });
