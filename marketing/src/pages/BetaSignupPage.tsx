@@ -715,7 +715,7 @@ export const BetaSignupPage: React.FC = () => {
                         Security Verification *
                       </label>
                       <HCaptcha
-                        siteKey={import.meta.env.VITE_HCAPTCHA_SITE_KEY || ''}
+                        siteKey={import.meta.env.VITE_HCAPTCHA_SITE_KEY || '884a8fb6-2f40-459b-83c6-4e0c4d360ef6'}
                         onVerify={handleCaptchaVerify}
                         onError={handleCaptchaError}
                         onExpire={handleCaptchaExpire}
