@@ -293,98 +293,62 @@ async function handleAdmin(pathSegments: string[], event: HandlerEvent) {
 }
 
 async function handleOverview() {
-  const mockStats = {
-    totalOrganizations: 12,
-    activeUsers: 43,
-    testRunsToday: 127,
-    activeFlakyTests: 8,
-    monthlyRecurringRevenue: 2890,
-    systemUptime: 99.7,
-    averageResponseTime: 145,
+  // Return fresh system state - all zeros for new system
+  const freshSystemStats = {
+    totalOrganizations: 0,
+    activeUsers: 0,
+    testRunsToday: 0,
+    activeFlakyTests: 0,
+    monthlyRecurringRevenue: 0,
+    systemUptime: 100.0,
+    averageResponseTime: 0,
+    organizations: [], // Empty array for organizations table
   };
 
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify(mockStats),
+    body: JSON.stringify(freshSystemStats),
   };
 }
 
 async function handleMetrics() {
-  const mockMetrics = {
+  // Return minimal fresh system metrics
+  const currentTime = new Date().toISOString();
+  const freshMetrics = {
     cpuUsage: [
-      { timestamp: new Date(Date.now() - 3600000).toISOString(), value: 45 },
-      { timestamp: new Date(Date.now() - 1800000).toISOString(), value: 52 },
-      { timestamp: new Date().toISOString(), value: 38 },
+      { timestamp: currentTime, value: 5 }, // Very low usage for fresh system
     ],
     memoryUsage: [
-      { timestamp: new Date(Date.now() - 3600000).toISOString(), value: 67 },
-      { timestamp: new Date(Date.now() - 1800000).toISOString(), value: 72 },
-      { timestamp: new Date().toISOString(), value: 69 },
+      { timestamp: currentTime, value: 15 }, // Minimal memory usage
     ],
     requestRate: [
-      { timestamp: new Date(Date.now() - 3600000).toISOString(), value: 124 },
-      { timestamp: new Date(Date.now() - 1800000).toISOString(), value: 156 },
-      { timestamp: new Date().toISOString(), value: 142 },
+      { timestamp: currentTime, value: 0 }, // No requests yet
     ],
   };
 
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify(mockMetrics),
+    body: JSON.stringify(freshMetrics),
   };
 }
 
 async function handleActivity() {
-  const mockActivity = [
-    {
-      id: '1',
-      type: 'user_login',
-      user: 'john@example.com',
-      description: 'User logged in',
-      timestamp: new Date(Date.now() - 300000).toISOString(),
-    },
-    {
-      id: '2',
-      type: 'test_run',
-      user: 'jane@company.com',
-      description: 'Started test run for project "API Tests"',
-      timestamp: new Date(Date.now() - 600000).toISOString(),
-    },
-    {
-      id: '3',
-      type: 'flaky_test_detected',
-      user: 'system',
-      description: 'Detected flaky test in AuthService.test.js',
-      timestamp: new Date(Date.now() - 900000).toISOString(),
-    },
-  ];
+  // Return empty activity for fresh system
+  const freshActivity = [];
 
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify({ activity: mockActivity }),
+    body: JSON.stringify({ activity: freshActivity }),
   };
 }
 
 async function handleUsers() {
-  const mockUsers = {
+  // Only show real system users - just admin for fresh system
+  const systemUsers = {
     data: [
-      {
-        id: 'user-1',
-        email: 'john@example.com',
-        name: 'John Doe',
-        role: 'user',
-        status: 'active',
-        isSystemAdmin: false,
-        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        lastLogin: new Date(Date.now() - 300000).toISOString(),
-        projectsCreated: 2,
-        testResultsSubmitted: 45,
-        totalSessions: 12,
-        avgSessionDuration: 18,
-      },
       {
         id: 'admin-nixbit',
         email: ADMIN_EMAIL,
@@ -392,18 +356,18 @@ async function handleUsers() {
         role: 'admin',
         status: 'active',
         isSystemAdmin: true,
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
         projectsCreated: 0,
         testResultsSubmitted: 0,
-        totalSessions: 5,
-        avgSessionDuration: 25,
+        totalSessions: 1,
+        avgSessionDuration: 0,
       },
     ],
     pagination: {
       page: 1,
       limit: 20,
-      total: 2,
+      total: 1,
       totalPages: 1,
     },
   };
@@ -411,48 +375,26 @@ async function handleUsers() {
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify(mockUsers),
+    body: JSON.stringify(systemUsers),
   };
 }
 
 async function handleOrganizations() {
-  const mockOrganizations = {
-    data: [
-      {
-        id: 'org-1',
-        name: 'Acme Corp',
-        plan: 'enterprise',
-        status: 'active',
-        userCount: 25,
-        createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-        monthlySpend: 299,
-        testRuns: 1250,
-        healthScore: 92,
-      },
-      {
-        id: 'org-2',
-        name: 'TechStart Inc',
-        plan: 'team',
-        status: 'active',
-        userCount: 8,
-        createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(),
-        monthlySpend: 99,
-        testRuns: 456,
-        healthScore: 78,
-      },
-    ],
+  // Return empty organizations for fresh system
+  const freshOrganizations = {
+    data: [],
     pagination: {
       page: 1,
       limit: 20,
-      total: 2,
-      totalPages: 1,
+      total: 0,
+      totalPages: 0,
     },
   };
 
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify(mockOrganizations),
+    body: JSON.stringify(freshOrganizations),
   };
 }
 
@@ -588,79 +530,8 @@ async function handleAuditLogs(pathSegments: string[], event: HandlerEvent) {
         duration: '45 minutes'
       },
       createdAt: new Date(Date.now() - 3600000).toISOString()
-    },
-    {
-      id: 'audit-4',
-      userId: 'user-2',
-      action: 'project_create',
-      resourceType: 'project',
-      resourceId: 'proj-456',
-      category: 'project_management',
-      severity: 'info',
-      description: 'New project created',
-      ipAddress: '203.0.113.45',
-      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
-      details: {
-        projectName: 'E-commerce Tests',
-        repository: 'github.com/company/ecommerce'
-      },
-      afterState: {
-        id: 'proj-456',
-        name: 'E-commerce Tests',
-        status: 'active'
-      },
-      createdAt: new Date(Date.now() - 7200000).toISOString(),
-      user: {
-        id: 'user-2',
-        email: 'jane@company.com',
-        name: 'Jane Smith'
-      }
-    },
-    {
-      id: 'audit-5',
-      action: 'system_alert',
-      resourceType: 'system',
-      category: 'system',
-      severity: 'error',
-      description: 'Database connection pool exhausted',
-      details: {
-        errorCode: 'DB_POOL_EXHAUSTED',
-        activeConnections: 100,
-        maxConnections: 100,
-        queuedQueries: 25
-      },
-      createdAt: new Date(Date.now() - 10800000).toISOString()
-    },
-    {
-      id: 'audit-6',
-      userId: 'admin-nixbit',
-      action: 'user_role_change',
-      resourceType: 'user',
-      resourceId: 'user-3',
-      category: 'user_management',
-      severity: 'warn',
-      description: 'User role elevated to system administrator',
-      ipAddress: '10.0.0.1',
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      beforeState: {
-        role: 'user',
-        isSystemAdmin: false
-      },
-      afterState: {
-        role: 'admin',
-        isSystemAdmin: true
-      },
-      details: {
-        elevatedBy: 'admin-nixbit',
-        reason: 'Operational requirement'
-      },
-      createdAt: new Date(Date.now() - 14400000).toISOString(),
-      user: {
-        id: 'admin-nixbit',
-        email: ADMIN_EMAIL,
-        name: 'Nixbit Administrator'
-      }
     }
+    // More audit logs will appear here as the system is used
   ];
 
   // Apply filters

@@ -63,40 +63,40 @@ const DashboardPage: React.FC = () => {
       value: stats?.totalOrganizations?.toLocaleString() || '0',
       icon: BuildingOfficeIcon,
       color: 'blue',
-      change: '+12%',
-      changeType: 'increase' as const,
+      change: stats?.totalOrganizations ? '+12%' : 'No data',
+      changeType: stats?.totalOrganizations ? 'increase' as const : 'neutral' as const,
     },
     {
       title: 'Active Users',
       value: stats?.activeUsers?.toLocaleString() || '0',
       icon: UsersIcon,
       color: 'green',
-      change: '+8%',
-      changeType: 'increase' as const,
+      change: stats?.activeUsers ? '+8%' : 'No data',
+      changeType: stats?.activeUsers ? 'increase' as const : 'neutral' as const,
     },
     {
       title: 'Test Runs Today',
       value: stats?.testRunsToday?.toLocaleString() || '0',
       icon: PlayIcon,
       color: 'purple',
-      change: '+23%',
-      changeType: 'increase' as const,
+      change: stats?.testRunsToday ? '+23%' : 'No data',
+      changeType: stats?.testRunsToday ? 'increase' as const : 'neutral' as const,
     },
     {
       title: 'Active Flaky Tests',
       value: stats?.activeFlakyTests?.toLocaleString() || '0',
       icon: ExclamationTriangleIcon,
       color: 'yellow',
-      change: '-5%',
-      changeType: 'decrease' as const,
+      change: stats?.activeFlakyTests ? '-5%' : 'No data',
+      changeType: stats?.activeFlakyTests ? 'decrease' as const : 'neutral' as const,
     },
     {
       title: 'Monthly Recurring Revenue',
       value: `$${stats?.monthlyRecurringRevenue?.toLocaleString() || '0'}`,
       icon: CurrencyDollarIcon,
       color: 'green',
-      change: '+15%',
-      changeType: 'increase' as const,
+      change: stats?.monthlyRecurringRevenue ? '+15%' : 'No data',
+      changeType: stats?.monthlyRecurringRevenue ? 'increase' as const : 'neutral' as const,
     },
     {
       title: 'System Uptime',
@@ -201,45 +201,52 @@ const DashboardPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {/* Placeholder data - will be replaced with real data */}
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  Acme Corp
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <span className="badge-gray">Enterprise</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex items-center">
-                    <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                      <div className="bg-green-600 h-2 rounded-full" style={{ width: '92%' }}></div>
+              {stats?.organizations && stats.organizations.length > 0 ? (
+                stats.organizations.map((org: any) => (
+                  <tr key={org.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {org.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className="badge-gray">{org.plan}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center">
+                        <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                          <div 
+                            className={`h-2 rounded-full ${
+                              org.healthScore > 90 ? 'bg-green-600' : 
+                              org.healthScore > 70 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`} 
+                            style={{ width: `${org.healthScore}%` }}
+                          ></div>
+                        </div>
+                        <span>{org.healthScore}%</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`badge-${
+                        org.status === 'active' ? 'success' : 
+                        org.status === 'warning' ? 'warning' : 'error'
+                      }`}>
+                        {org.status.charAt(0).toUpperCase() + org.status.slice(1)}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-sm text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <BuildingOfficeIcon className="h-12 w-12 text-gray-400 mb-2" />
+                      <p className="font-medium">No organizations yet</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Organizations will appear here as users sign up and create accounts
+                      </p>
                     </div>
-                    <span>92%</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="badge-success">Active</span>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  TechStart Inc
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <span className="badge-gray">Team</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex items-center">
-                    <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                      <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '78%' }}></div>
-                    </div>
-                    <span>78%</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="badge-warning">Warning</span>
-                </td>
-              </tr>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
