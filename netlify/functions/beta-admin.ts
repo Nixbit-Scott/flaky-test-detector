@@ -14,8 +14,8 @@ const headers = {
 const adminEmails = ['admin@nixbit.dev', 'scott@nixbit.dev'];
 
 // Initialize Supabase client
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 let supabase: any = null;
 
@@ -41,45 +41,7 @@ let betaTesters: Array<{
   notes?: string;
 }> = [];
 
-// Get real beta signups by fetching from marketing-signup endpoint
-const loadRealBetaSignups = async () => {
-  try {
-    // Fetch signups from marketing-signup function
-    const response = await fetch('/.netlify/functions/marketing-signup', {
-      method: 'GET',
-      headers: headers,
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      if (result.success && result.data) {
-        // Convert marketing signups to beta tester format
-        betaTesters = result.data.map((signup: any) => ({
-          id: signup.id,
-          email: signup.email,
-          name: signup.name || 'Unknown',
-          company: signup.company || 'Not provided',
-          teamSize: signup.teamSize || 'Not specified',
-          status: 'pending' as const,
-          signupDate: signup.createdAt,
-          notes: [
-            signup.role ? `Role: ${signup.role}` : null,
-            signup.primaryUsage ? `CI/CD: ${signup.primaryUsage}` : null,
-            signup.availableTime ? `Time Commitment: ${signup.availableTime}` : null,
-            signup.motivation ? `Motivation: ${signup.motivation.substring(0, 100)}...` : null,
-          ].filter(Boolean).join(' | ')
-        }));
-        
-        console.log(`Loaded ${betaTesters.length} real beta signups`);
-      }
-    }
-  } catch (error) {
-    console.error('Error loading beta signups:', error);
-    // Keep empty array if fetching fails
-  }
-};
-
-const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+const handler: Handler = async (event: HandlerEvent) => {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -132,8 +94,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
-    // Initialize demo data
-    await loadRealBetaSignups();
+    // No need to load data here as we'll fetch directly from database
 
     // Handle different HTTP methods and paths
     const path = event.path.replace('/.netlify/functions/beta-admin', '') || '/';
@@ -194,6 +155,7 @@ async function handleListBetaTesters() {
       const { data: signups, error } = await supabase
         .from('marketing_signups')
         .select('*')
+        .or('source.eq.beta-signup-page,source.is.null')
         .order('created_at', { ascending: false });
 
       if (!error && signups) {
@@ -212,7 +174,12 @@ async function handleListBetaTesters() {
               signupDate: signup.created_at,
               provisionedDate: signup.provisioned_at,
               accessExpires: signup.access_expires,
-              notes: signup.notes,
+              notes: signup.notes || [
+                signup.role ? `Role: ${signup.role}` : null,
+                signup.primary_usage ? `CI/CD: ${signup.primary_usage}` : null,
+                signup.available_time ? `Time: ${signup.available_time}` : null,
+                signup.motivation ? `Motivation: ${signup.motivation.substring(0, 100)}...` : null,
+              ].filter(Boolean).join(' | '),
             })),
             total: signups.length,
           }),
@@ -237,6 +204,72 @@ async function handleListBetaTesters() {
 
 async function handleBetaAnalytics() {
   const now = new Date();
+  
+  // Try to get analytics from database
+  if (supabase) {
+    try {
+      const { data: signups, error } = await supabase
+        .from('marketing_signups')
+        .select('*')
+        .or('source.eq.beta-signup-page,source.is.null');
+
+      if (!error && signups) {
+        const stats = {
+          total: signups.length,
+          pending: signups.filter((t: any) => t.status === 'pending' || !t.status).length,
+          approved: signups.filter((t: any) => t.status === 'approved').length,
+          provisioned: signups.filter((t: any) => t.status === 'provisioned').length,
+          rejected: signups.filter((t: any) => t.status === 'rejected').length,
+        };
+
+        // Calculate signup trends (last 7 days)
+        const signupTrends: Array<{ date: string; signups: number }> = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+          const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+          
+          const daySignups = signups.filter((t: any) => {
+            const signupDate = new Date(t.created_at);
+            return signupDate >= dayStart && signupDate < dayEnd;
+          });
+
+          signupTrends.push({
+            date: dayStart.toISOString().split('T')[0],
+            signups: daySignups.length,
+          });
+        }
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            data: {
+              stats,
+              trends: signupTrends,
+              recentSignups: signups
+                .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .slice(0, 10)
+                .map((s: any) => ({
+                  id: s.id,
+                  email: s.email,
+                  name: s.name,
+                  company: s.company,
+                  teamSize: s.team_size,
+                  status: s.status || 'pending',
+                  signupDate: s.created_at,
+                })),
+            },
+          }),
+        };
+      }
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+    }
+  }
+  
+  // Fallback to in-memory data
   const stats = {
     total: betaTesters.length,
     pending: betaTesters.filter(t => t.status === 'pending').length,
@@ -246,7 +279,7 @@ async function handleBetaAnalytics() {
   };
 
   // Calculate signup trends (last 7 days)
-  const signupTrends = [];
+  const signupTrends: Array<{ date: string; signups: number }> = [];
   for (let i = 6; i >= 0; i--) {
     const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
     const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -293,6 +326,54 @@ async function handleProvisionAccess(body: string | null) {
     };
   }
 
+  const now = new Date();
+  const accessExpires = new Date(now.getTime() + accessDays * 24 * 60 * 60 * 1000);
+
+  // Update in database if available
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('marketing_signups')
+        .update({
+          status: 'provisioned',
+          provisioned_at: now.toISOString(),
+          access_expires: accessExpires.toISOString(),
+          notes: notes,
+          updated_at: now.toISOString(),
+        })
+        .eq('email', email)
+        .select()
+        .single();
+
+      if (!error && data) {
+        // TODO: Send welcome email with login credentials
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            message: 'Access provisioned successfully',
+            data: {
+              id: data.id,
+              email: data.email,
+              name: data.name,
+              company: data.company,
+              teamSize: data.team_size,
+              status: data.status,
+              signupDate: data.created_at,
+              provisionedDate: data.provisioned_at,
+              accessExpires: data.access_expires,
+              notes: data.notes,
+            },
+          }),
+        };
+      }
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+    }
+  }
+
+  // Fallback to in-memory
   const testerIndex = betaTesters.findIndex(t => t.email === email);
   if (testerIndex === -1) {
     return {
@@ -305,10 +386,6 @@ async function handleProvisionAccess(body: string | null) {
     };
   }
 
-  // Update tester status
-  const now = new Date();
-  const accessExpires = new Date(now.getTime() + accessDays * 24 * 60 * 60 * 1000);
-  
   betaTesters[testerIndex] = {
     ...betaTesters[testerIndex],
     status: 'provisioned',
@@ -316,12 +393,6 @@ async function handleProvisionAccess(body: string | null) {
     accessExpires: accessExpires.toISOString(),
     notes: notes || betaTesters[testerIndex].notes,
   };
-
-  // In a real implementation, you would:
-  // 1. Create user account in your system
-  // 2. Send welcome email with login instructions
-  // 3. Set up trial organization with appropriate limits
-  // 4. Log the provisioning action
 
   return {
     statusCode: 200,
@@ -360,6 +431,46 @@ async function handleUpdateStatus(body: string | null) {
     };
   }
 
+  // Update in database if available
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('marketing_signups')
+        .update({
+          status,
+          notes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('email', email)
+        .select()
+        .single();
+
+      if (!error && data) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            message: 'Status updated successfully',
+            data: {
+              id: data.id,
+              email: data.email,
+              name: data.name,
+              company: data.company,
+              teamSize: data.team_size,
+              status: data.status,
+              signupDate: data.created_at,
+              notes: data.notes,
+            },
+          }),
+        };
+      }
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+    }
+  }
+
+  // Fallback to in-memory
   const testerIndex = betaTesters.findIndex(t => t.email === email);
   if (testerIndex === -1) {
     return {

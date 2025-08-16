@@ -109,3 +109,7 @@ scripts/
 .claude/
 Dockerfile.old
 Dockerfile.prod.old
+GIT_CHEATSHEET.md
+
+# Local startup script
+start.sh

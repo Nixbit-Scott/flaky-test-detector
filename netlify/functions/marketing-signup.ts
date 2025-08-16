@@ -1,5 +1,6 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { z } from 'zod';
+import { createClient } from '@supabase/supabase-js';
 
 // Common headers for CORS
 const headers = {
@@ -19,9 +20,14 @@ const MarketingSignupSchema = z.object({
   currentPainPoints: z.array(z.string()).optional(),
   interestedFeatures: z.array(z.string()).optional(),
   primaryUsage: z.string().optional(),
+  experience: z.string().optional(),
   motivation: z.string().optional(),
+  expectations: z.string().optional(),
   availableTime: z.string().optional(),
+  communicationPreference: z.array(z.string()).optional(),
   referralSource: z.string().optional(),
+  linkedinProfile: z.string().optional(),
+  githubProfile: z.string().optional(),
   source: z.string().optional(),
   utmParameters: z.record(z.string()).optional(),
   metadata: z.record(z.any()).optional(),
@@ -29,10 +35,24 @@ const MarketingSignupSchema = z.object({
 
 type MarketingSignupRequest = z.infer<typeof MarketingSignupSchema>;
 
-// Simple in-memory store for demo (in production, use database)
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://pxkjkqdkmnnjdrgyrocy.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase: any = null;
+
+if (supabaseUrl && supabaseServiceKey) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseServiceKey);
+  } catch (error) {
+    console.warn('Supabase client initialization failed:', error);
+  }
+}
+
+// Fallback in-memory store if database is not available
 let signups: Array<MarketingSignupRequest & { id: string; createdAt: string }> = [];
 
-const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+const handler: Handler = async (event: HandlerEvent) => {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -44,6 +64,45 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
   // Handle GET request for beta admin to fetch signups
   if (event.httpMethod === 'GET') {
+    try {
+      // Try to fetch from database first
+      if (supabase) {
+        const { data: dbSignups, error } = await supabase
+          .from('marketing_signups')
+          .select('*')
+          .eq('source', 'beta-signup-page')
+          .order('created_at', { ascending: false });
+
+        if (!error && dbSignups) {
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              success: true,
+              data: dbSignups.map((s: any) => ({
+                id: s.id,
+                email: s.email,
+                name: s.name,
+                company: s.company,
+                teamSize: s.team_size,
+                role: s.role,
+                primaryUsage: s.primary_usage,
+                motivation: s.motivation,
+                availableTime: s.available_time,
+                source: s.source,
+                createdAt: s.created_at,
+                status: s.status || 'pending',
+              })),
+              total: dbSignups.length,
+            }),
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching from database:', error);
+    }
+
+    // Fallback to in-memory store
     return {
       statusCode: 200,
       headers,
@@ -73,7 +132,41 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const validatedData = MarketingSignupSchema.parse(body);
 
     // Check if email already exists
-    const existingSignup = signups.find(s => s.email === validatedData.email);
+    let existingSignup: { id: string; email: string; createdAt: string } | null = null;
+    
+    // Try database first
+    if (supabase) {
+      try {
+        const { data: existing, error } = await supabase
+          .from('marketing_signups')
+          .select('id, email, created_at')
+          .eq('email', validatedData.email)
+          .single();
+        
+        if (existing && !error) {
+          existingSignup = {
+            id: existing.id,
+            email: existing.email,
+            createdAt: existing.created_at,
+          };
+        }
+      } catch (dbError) {
+        console.error('Database check error:', dbError);
+      }
+    }
+    
+    // Fallback to in-memory check
+    if (!existingSignup) {
+      const memorySignup = signups.find(s => s.email === validatedData.email);
+      if (memorySignup) {
+        existingSignup = {
+          id: memorySignup.id,
+          email: memorySignup.email,
+          createdAt: memorySignup.createdAt,
+        };
+      }
+    }
+    
     if (existingSignup) {
       return {
         statusCode: 200,
@@ -81,23 +174,86 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         body: JSON.stringify({
           success: true,
           message: 'Thank you for your interest! We already have your information and will be in touch soon.',
-          data: {
-            id: existingSignup.id,
-            email: existingSignup.email,
-            createdAt: existingSignup.createdAt,
-          },
+          data: existingSignup,
         }),
       };
     }
 
     // Create new signup
-    const signup = {
+    let signup: any = {
       ...validatedData,
-      id: `signup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `signup_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       createdAt: new Date().toISOString(),
     };
 
-    signups.push(signup);
+    // Try to save to database
+    if (supabase) {
+      try {
+        // Transform teamSize to match database format
+        const teamSizeMap: { [key: string]: string } = {
+          '1-5 developers': '1-5',
+          '6-15 developers': '6-15',
+          '16-50 developers': '16-50',
+          '50+ developers': '50+',
+        };
+        
+        const dbData = {
+          email: validatedData.email,
+          name: validatedData.name || null,
+          company: validatedData.company || null,
+          role: validatedData.role || null,
+          team_size: teamSizeMap[validatedData.teamSize || ''] || validatedData.teamSize || null,
+          current_pain_points: validatedData.currentPainPoints || [],
+          interested_features: validatedData.interestedFeatures || [],
+          primary_usage: validatedData.primaryUsage || null,
+          experience: validatedData.experience || null,
+          referral_source: validatedData.referralSource || null,
+          linkedin_profile: validatedData.linkedinProfile || null,
+          github_profile: validatedData.githubProfile || null,
+          motivation: validatedData.motivation || null,
+          expectations: validatedData.expectations || null,
+          available_time: validatedData.availableTime || null,
+          communication_preference: validatedData.communicationPreference || [],
+          source: validatedData.source || 'unknown',
+          utm_parameters: validatedData.utmParameters || {},
+          metadata: validatedData.metadata || {},
+          status: 'pending',
+        };
+
+        const { data: savedSignup, error } = await supabase
+          .from('marketing_signups')
+          .insert([dbData])
+          .select()
+          .single();
+
+        if (!error && savedSignup) {
+          console.log('Signup saved to database:', savedSignup.email);
+          signup = {
+            id: savedSignup.id,
+            email: savedSignup.email,
+            name: savedSignup.name,
+            company: savedSignup.company,
+            teamSize: savedSignup.team_size,
+            role: savedSignup.role,
+            primaryUsage: savedSignup.primary_usage,
+            motivation: savedSignup.motivation,
+            source: savedSignup.source,
+            createdAt: savedSignup.created_at,
+          };
+        } else {
+          console.error('Failed to save to database:', error);
+          // Still add to memory as fallback
+          signups.push(signup);
+        }
+      } catch (dbError) {
+        console.error('Database save error:', dbError);
+        // Still add to memory as fallback
+        signups.push(signup);
+      }
+    } else {
+      // No database available, use in-memory
+      signups.push(signup);
+    }
 
     // Log signup for debugging (in production, save to database)
     console.log('New marketing signup:', {
