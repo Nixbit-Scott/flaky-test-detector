@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, MessageSquare, HelpCircle, Shield, FileText, Clock } from 'lucide-react'
 import { useMarketingSignup } from '../hooks/useMarketingSignup'
+import HCaptcha from '../components/HCaptcha'
+import { useCaptcha } from '../hooks/useCaptcha'
 
 const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -21,16 +23,31 @@ const ContactPage: React.FC = () => {
         message: '',
         type: 'general'
       })
+      resetCaptcha()
     }
   })
 
+  const { 
+    captchaToken, 
+    isCaptchaVerified, 
+    captchaError, 
+    handleCaptchaVerify, 
+    handleCaptchaError, 
+    handleCaptchaExpire,
+    resetCaptcha 
+  } = useCaptcha()
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isCaptchaVerified) {
+      return
+    }
     // For now, use the marketing signup endpoint to capture contact requests
     submitSignup({
       email: formData.email,
       name: formData.name,
       company: `Contact: ${formData.subject}`,
+      captchaToken: captchaToken || undefined
     })
   }
 
@@ -178,11 +195,28 @@ const ContactPage: React.FC = () => {
                   />
                 </div>
 
+                {/* CAPTCHA */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Security Verification *
+                  </label>
+                  <HCaptcha
+                    siteKey={import.meta.env.VITE_HCAPTCHA_SITE_KEY || ''}
+                    onVerify={handleCaptchaVerify}
+                    onError={handleCaptchaError}
+                    onExpire={handleCaptchaExpire}
+                    className="flex justify-center"
+                  />
+                  {captchaError && (
+                    <p className="text-sm text-red-600 mt-2">{captchaError}</p>
+                  )}
+                </div>
+
                 {/* Submit */}
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full btn-primary"
+                  disabled={isSubmitting || !isCaptchaVerified}
+                  className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Sending...' : 'Send Message'}
                 </button>

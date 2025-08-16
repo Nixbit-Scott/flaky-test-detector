@@ -6,6 +6,8 @@ import {
   Award, TrendingUp, Globe, Mail
 } from 'lucide-react';
 import { useMarketingSignup } from '../hooks/useMarketingSignup';
+import HCaptcha from '../components/HCaptcha';
+import { useCaptcha } from '../hooks/useCaptcha';
 
 interface BetaApplication {
   email: string;
@@ -62,6 +64,15 @@ export const BetaSignupPage: React.FC = () => {
   // Use hook state instead of local state
   const loading = isSubmitting;
   const success = isSuccess;
+  const { 
+    captchaToken, 
+    isCaptchaVerified, 
+    captchaError, 
+    handleCaptchaVerify, 
+    handleCaptchaError, 
+    handleCaptchaExpire,
+    resetCaptcha 
+  } = useCaptcha();
   const [formData, setFormData] = useState<BetaApplication>({
     email: '',
     name: '',
@@ -114,7 +125,8 @@ export const BetaSignupPage: React.FC = () => {
         setIsValidStep(
           formData.availableTime.length > 0 && 
           formData.communicationPreference.length > 0 &&
-          formData.referralSource.length > 0
+          formData.referralSource.length > 0 &&
+          isCaptchaVerified
         );
         break;
       default:
@@ -149,7 +161,7 @@ export const BetaSignupPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isValidStep) {
+    if (isValidStep && isCaptchaVerified) {
       try {
         await submitSignup({
           email: formData.email,
@@ -157,10 +169,12 @@ export const BetaSignupPage: React.FC = () => {
           company: formData.company,
           teamSize: formData.teamSize as "1-5" | "6-15" | "16-50" | "50+",
           currentPainPoints: [formData.motivation],
-          interestedFeatures: [formData.primaryUsage]
+          interestedFeatures: [formData.primaryUsage],
+          captchaToken: captchaToken || undefined
         });
       } catch (err) {
         console.error('Submission error:', err);
+        resetCaptcha(); // Reset CAPTCHA on error
       }
     }
   };
@@ -693,6 +707,23 @@ export const BetaSignupPage: React.FC = () => {
                           <option key={source} value={source}>{source}</option>
                         ))}
                       </select>
+                    </div>
+
+                    {/* CAPTCHA */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Security Verification *
+                      </label>
+                      <HCaptcha
+                        siteKey={import.meta.env.VITE_HCAPTCHA_SITE_KEY || ''}
+                        onVerify={handleCaptchaVerify}
+                        onError={handleCaptchaError}
+                        onExpire={handleCaptchaExpire}
+                        className="flex justify-center"
+                      />
+                      {captchaError && (
+                        <p className="text-sm text-red-600 mt-2">{captchaError}</p>
+                      )}
                     </div>
                   </div>
                 </motion.div>
