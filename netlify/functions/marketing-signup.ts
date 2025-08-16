@@ -66,7 +66,7 @@ async function validateCaptcha(token: string): Promise<boolean> {
   }
 
   try {
-    const response = await fetch('https://hcaptcha.com/siteverify', {
+    const response = await fetch('https://api.hcaptcha.com/siteverify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -74,7 +74,18 @@ async function validateCaptcha(token: string): Promise<boolean> {
       body: `secret=${secretKey}&response=${token}`,
     });
 
+    if (!response.ok) {
+      console.error('CAPTCHA API response not OK:', response.status, response.statusText);
+      return false;
+    }
+
     const data = await response.json();
+    console.log('CAPTCHA validation response:', data);
+    
+    if (!data.success) {
+      console.error('CAPTCHA validation failed:', data['error-codes']);
+    }
+    
     return data.success === true;
   } catch (error) {
     console.error('CAPTCHA validation error:', error);
