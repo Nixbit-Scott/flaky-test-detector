@@ -5,6 +5,17 @@ interface PlatformMetricsProps {
   data?: PlatformMetricsType;
 }
 
+// Calculate system health based on actual metrics
+const calculateSystemHealth = (cpu: number, memory: number, requestRate: number): number => {
+  // Simple health calculation based on resource usage
+  const cpuHealth = Math.max(0, 100 - cpu);
+  const memoryHealth = Math.max(0, 100 - memory);
+  const requestHealth = Math.min(100, requestRate / 2); // Assumes 200 req/min is good
+  
+  // Weighted average
+  return (cpuHealth * 0.4 + memoryHealth * 0.4 + requestHealth * 0.2);
+};
+
 const PlatformMetrics: React.FC<PlatformMetricsProps> = ({ data }) => {
   if (!data) {
     return (
@@ -40,8 +51,9 @@ const PlatformMetrics: React.FC<PlatformMetricsProps> = ({ data }) => {
     },
     {
       label: 'System Health',
-      value: 95, // Mock value
-      color: 'green',
+      value: calculateSystemHealth(latestCpu, latestMemory, latestRequestRate),
+      color: calculateSystemHealth(latestCpu, latestMemory, latestRequestRate) > 90 ? 'green' : 
+             calculateSystemHealth(latestCpu, latestMemory, latestRequestRate) > 70 ? 'yellow' : 'red',
       format: (value: number) => `${value.toFixed(1)}%`,
     },
   ];

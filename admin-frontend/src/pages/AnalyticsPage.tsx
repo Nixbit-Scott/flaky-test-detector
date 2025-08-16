@@ -144,65 +144,81 @@ const SimpleChart: React.FC<{
 const AnalyticsPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
 
-  // Mock analytics data - in real implementation this would come from the backend
+  // Fetch real analytics data from the backend
   const { data: analyticsData, isLoading, error } = useQuery(
     ['analytics', timeRange],
     async (): Promise<AnalyticsData> => {
-      // Simulate API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockDates = Array.from({ length: 30 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (29 - i));
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      });
-
-      return {
-        revenue: {
-          currentMRR: 24750,
-          previousMRR: 22100,
-          growth: 12.0,
-          trend: 'up',
-          byPlan: {
-            starter: 8700,
-            team: 9900,
-            enterprise: 6150
+      try {
+        const response = await fetch(`/.netlify/functions/analytics?timeRange=${timeRange}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
           },
-          forecast: 28500
-        },
-        customers: {
-          total: 347,
-          active: 329,
-          churnRate: 2.8,
-          newSignups: 23,
-          retention: 94.2,
-          byPlan: {
-            starter: 198,
-            team: 112,
-            enterprise: 37
-          }
-        },
-        platform: {
-          totalTestRuns: 1247893,
-          successRate: 94.7,
-          totalFlakyTests: 2847,
-          uptime: 99.8,
-          avgResponseTime: 145,
-          totalProjects: 892
-        },
-        trends: {
-          dates: mockDates,
-          revenue: Array.from({ length: 30 }, (_, i) => 
-            20000 + Math.sin(i / 5) * 2000 + i * 150 + Math.random() * 1000
-          ),
-          customers: Array.from({ length: 30 }, (_, i) => 
-            300 + Math.sin(i / 7) * 20 + i * 1.5 + Math.random() * 10
-          ),
-          testRuns: Array.from({ length: 30 }, (_, i) => 
-            40000 + Math.sin(i / 3) * 5000 + Math.random() * 8000
-          )
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch analytics');
         }
-      };
+
+        const result = await response.json();
+        
+        // If API returns data, use it; otherwise provide default values
+        if (result.success && result.data) {
+          return result.data;
+        }
+        
+        // Return empty/default data structure if no real data available
+        const dateCount = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : timeRange === '90d' ? 90 : 365;
+        const dates = Array.from({ length: Math.min(dateCount, 30) }, (_, i) => {
+          const date = new Date();
+          date.setDate(date.getDate() - (Math.min(dateCount, 30) - 1 - i));
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
+
+        return {
+          revenue: {
+            currentMRR: 0,
+            previousMRR: 0,
+            growth: 0,
+            trend: 'flat' as const,
+            byPlan: {
+              starter: 0,
+              team: 0,
+              enterprise: 0
+            },
+            forecast: 0
+          },
+          customers: {
+            total: 0,
+            active: 0,
+            churnRate: 0,
+            newSignups: 0,
+            retention: 100,
+            byPlan: {
+              starter: 0,
+              team: 0,
+              enterprise: 0
+            }
+          },
+          platform: {
+            totalTestRuns: 0,
+            successRate: 100,
+            totalFlakyTests: 0,
+            uptime: 100,
+            avgResponseTime: 0,
+            totalProjects: 0
+          },
+          trends: {
+            dates,
+            revenue: new Array(dates.length).fill(0),
+            customers: new Array(dates.length).fill(0),
+            testRuns: new Array(dates.length).fill(0)
+          }
+        };
+      } catch (err) {
+        console.error('Analytics fetch error:', err);
+        throw err;
+      }
     },
     { staleTime: 5 * 60 * 1000 } // Cache for 5 minutes
   );

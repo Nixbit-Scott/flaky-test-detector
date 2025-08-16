@@ -58,8 +58,18 @@ const BetaManagementPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedTester, setSelectedTester] = useState<BetaTester | null>(null);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [accessDays, setAccessDays] = useState(30);
   const [provisionNotes, setProvisionNotes] = useState('');
+  
+  // Manual creation form state
+  const [newTester, setNewTester] = useState({
+    email: '',
+    name: '',
+    company: '',
+    teamSize: '1-5',
+    notes: '',
+  });
 
   useEffect(() => {
     fetchBetaTesters();
@@ -91,38 +101,8 @@ const BetaManagementPage: React.FC = () => {
     } catch (err: any) {
       console.error('Error fetching beta testers:', err);
       setError(err.message);
-      // Set fallback data for demo
-      setTesters([
-        {
-          id: 'beta-1',
-          email: 'john@startup.io',
-          name: 'John Smith',
-          company: 'Startup Inc',
-          teamSize: '6-15',
-          status: 'pending',
-          signupDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 'beta-2',
-          email: 'sarah@techcorp.com',
-          name: 'Sarah Johnson',
-          company: 'TechCorp',
-          teamSize: '16-50',
-          status: 'approved',
-          signupDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 'beta-3',
-          email: 'mike@devteam.co',
-          name: 'Mike Brown',
-          company: 'DevTeam Co',
-          teamSize: '1-5',
-          status: 'provisioned',
-          signupDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          provisionedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          accessExpires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-      ]);
+      // Don't set any fallback data - show real state
+      setTesters([]);
     } finally {
       setLoading(false);
     }
@@ -214,6 +194,42 @@ const BetaManagementPage: React.FC = () => {
     }
   };
 
+  const createBetaTester = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/beta-admin/create', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newTester),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create beta tester');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchBetaTesters();
+        await fetchBetaAnalytics();
+        setShowCreateModal(false);
+        setNewTester({
+          email: '',
+          name: '',
+          company: '',
+          teamSize: '1-5',
+          notes: '',
+        });
+        setError(null);
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   // Calculate stats from testers if API didn't provide them
   const currentStats = stats.total > 0 ? stats : {
     total: testers.length,
@@ -250,6 +266,13 @@ const BetaManagementPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Beta Tester Management</h1>
           <p className="text-gray-600">Manage beta access and user provisioning</p>
         </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Beta Tester
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -342,10 +365,10 @@ const BetaManagementPage: React.FC = () => {
             <AlertCircle className="h-5 w-5 text-yellow-400" />
             <div className="ml-3">
               <h3 className="text-sm font-medium text-yellow-800">
-                API Connection Issue
+                Notice
               </h3>
               <div className="mt-2 text-sm text-yellow-700">
-                <p>Using demo data. {error}</p>
+                <p>{error}</p>
               </div>
             </div>
           </div>
@@ -453,12 +476,128 @@ const BetaManagementPage: React.FC = () => {
             <p className="mt-1 text-sm text-gray-500">
               {searchTerm || statusFilter !== 'all' 
                 ? 'No testers match your current filters.' 
-                : 'Get started by adding your first beta tester.'
+                : 'Get started by adding your first beta tester or wait for signups from the beta signup page.'
               }
             </p>
+            {!searchTerm && statusFilter === 'all' && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add First Beta Tester
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {/* Create Beta Tester Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Add Beta Tester Manually
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  value={newTester.email}
+                  onChange={(e) => setNewTester({ ...newTester, email: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="user@example.com"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={newTester.name}
+                  onChange={(e) => setNewTester({ ...newTester, name: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="John Doe"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Company
+                </label>
+                <input
+                  type="text"
+                  value={newTester.company}
+                  onChange={(e) => setNewTester({ ...newTester, company: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Acme Corp"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Team Size
+                </label>
+                <select 
+                  value={newTester.teamSize}
+                  onChange={(e) => setNewTester({ ...newTester, teamSize: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="1-5">1-5 developers</option>
+                  <option value="6-15">6-15 developers</option>
+                  <option value="16-50">16-50 developers</option>
+                  <option value="50+">50+ developers</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Notes
+                </label>
+                <textarea
+                  rows={3}
+                  value={newTester.notes}
+                  onChange={(e) => setNewTester({ ...newTester, notes: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Any additional information..."
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewTester({
+                    email: '',
+                    name: '',
+                    company: '',
+                    teamSize: '1-5',
+                    notes: '',
+                  });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createBetaTester}
+                disabled={!newTester.email}
+                className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add Beta Tester
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Provision Access Modal */}
       {showProvisionModal && selectedTester && (

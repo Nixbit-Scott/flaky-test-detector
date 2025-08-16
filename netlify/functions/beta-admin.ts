@@ -108,7 +108,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
         break;
       case 'POST':
-        if (path === '/provision') {
+        if (path === '/create') {
+          return await handleCreateBetaTester(event.body);
+        } else if (path === '/provision') {
           return await handleProvisionAccess(event.body);
         } else if (path === '/update-status') {
           return await handleUpdateStatus(event.body);
@@ -545,6 +547,120 @@ async function handleUpdateTester(body: string | null) {
   };
 }
 
+async function handleCreateBetaTester(body: string | null) {
+  const { email, name, company, teamSize, notes } = JSON.parse(body || '{}');
+
+  if (!email) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({
+        success: false,
+        message: 'Email is required',
+      }),
+    };
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({
+        success: false,
+        message: 'Invalid email format',
+      }),
+    };
+  }
+
+  const now = new Date().toISOString();
+
+  // Save to database if available
+  if (supabase) {
+    try {
+      // Check if email already exists
+      const { data: existing, error: checkError } = await supabase
+        .from('marketing_signups')
+        .select('email')
+        .eq('email', email)
+        .single();
+
+      if (existing && !checkError) {
+        return {
+          statusCode: 409,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            message: 'A beta tester with this email already exists',
+          }),
+        };
+      }
+
+      // Create new beta tester
+      const { data, error } = await supabase
+        .from('marketing_signups')
+        .insert([{
+          email,
+          name: name || null,
+          company: company || null,
+          team_size: teamSize || '1-5',
+          notes: notes || null,
+          source: 'admin-manual',
+          status: 'pending',
+          created_at: now,
+          updated_at: now,
+        }])
+        .select()
+        .single();
+
+      if (!error && data) {
+        return {
+          statusCode: 201,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            message: 'Beta tester created successfully',
+            data: {
+              id: data.id,
+              email: data.email,
+              name: data.name,
+              company: data.company,
+              teamSize: data.team_size,
+              status: data.status,
+              signupDate: data.created_at,
+              notes: data.notes,
+            },
+          }),
+        };
+      } else {
+        console.error('Error creating beta tester:', error);
+        throw new Error(error?.message || 'Failed to create beta tester');
+      }
+    } catch (dbError: any) {
+      console.error('Database error:', dbError);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          message: dbError.message || 'Failed to create beta tester',
+        }),
+      };
+    }
+  }
+
+  // Fallback if no database
+  return {
+    statusCode: 503,
+    headers,
+    body: JSON.stringify({
+      success: false,
+      message: 'Database not available. Please ensure Supabase is configured.',
+    }),
+  };
+}
+
 async function handleRemoveTester(queryParams: any) {
   const email = queryParams?.email;
 
@@ -559,6 +675,30 @@ async function handleRemoveTester(queryParams: any) {
     };
   }
 
+  // Remove from database if available
+  if (supabase) {
+    try {
+      const { error } = await supabase
+        .from('marketing_signups')
+        .delete()
+        .eq('email', email);
+
+      if (!error) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            message: 'Tester removed successfully',
+          }),
+        };
+      }
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+    }
+  }
+
+  // Fallback to in-memory
   const testerIndex = betaTesters.findIndex(t => t.email === email);
   if (testerIndex === -1) {
     return {
