@@ -78,7 +78,7 @@ const HCaptcha = React.forwardRef<HCaptchaRef, HCaptchaProps>(({
     });
 
     setWidgetId(id);
-  }, [isLoaded, siteKey, onVerify, onError, onExpire, size, theme, widgetId]);
+  }, [isLoaded, siteKey, onVerify, onError, onExpire, size, theme]);
 
   // Reset the captcha
   const reset = () => {
