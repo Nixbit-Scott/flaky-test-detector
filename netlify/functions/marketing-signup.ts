@@ -55,40 +55,68 @@ let signups: Array<MarketingSignupRequest & { id: string; createdAt: string }> =
 
 // CAPTCHA validation function
 async function validateCaptcha(token: string): Promise<boolean> {
+  console.log('[CAPTCHA] Starting validation process...');
+  
   if (!token) {
+    console.error('[CAPTCHA] No token provided');
     return false;
   }
 
+  console.log('[CAPTCHA] Token received (length):', token.length);
+  console.log('[CAPTCHA] Token preview:', token.substring(0, 20) + '...');
+
   const secretKey = process.env.HCAPTCHA_SECRET_KEY;
   if (!secretKey) {
-    console.warn('HCAPTCHA_SECRET_KEY not configured, skipping CAPTCHA validation');
+    console.warn('[CAPTCHA] HCAPTCHA_SECRET_KEY not configured, skipping CAPTCHA validation');
     return true; // Allow signup if CAPTCHA is not configured (for development)
   }
 
+  console.log('[CAPTCHA] Secret key is configured');
+
   try {
+    console.log('[CAPTCHA] Making request to hCaptcha API...');
+    
+    const requestBody = `secret=${encodeURIComponent(secretKey)}&response=${encodeURIComponent(token)}`;
+    console.log('[CAPTCHA] Request body length:', requestBody.length);
+    
     const response = await fetch('https://api.hcaptcha.com/siteverify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: `secret=${secretKey}&response=${token}`,
+      body: requestBody,
     });
 
+    console.log('[CAPTCHA] API response status:', response.status, response.statusText);
+
     if (!response.ok) {
-      console.error('CAPTCHA API response not OK:', response.status, response.statusText);
+      console.error('[CAPTCHA] API response not OK:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('[CAPTCHA] Error response body:', errorText);
       return false;
     }
 
     const data = await response.json();
-    console.log('CAPTCHA validation response:', data);
+    console.log('[CAPTCHA] Full validation response:', JSON.stringify(data, null, 2));
     
     if (!data.success) {
-      console.error('CAPTCHA validation failed:', data['error-codes']);
+      console.error('[CAPTCHA] Validation failed with error codes:', data['error-codes']);
+      console.error('[CAPTCHA] Error details:', {
+        'invalid-input-secret': 'The secret parameter is invalid or malformed',
+        'invalid-input-response': 'The response parameter is invalid or malformed',
+        'bad-request': 'The request is invalid or malformed',
+        'timeout-or-duplicate': 'The response is no longer valid: either is too old or has been used previously',
+        'missing-input-secret': 'The secret parameter is missing',
+        'missing-input-response': 'The response parameter is missing'
+      });
+    } else {
+      console.log('[CAPTCHA] Validation successful!');
     }
     
     return data.success === true;
   } catch (error) {
-    console.error('CAPTCHA validation error:', error);
+    console.error('[CAPTCHA] Validation error:', error);
+    console.error('[CAPTCHA] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return false;
   }
 }
@@ -174,8 +202,12 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // Validate CAPTCHA if token is provided
     if (validatedData.captchaToken) {
+      console.log('[SIGNUP] CAPTCHA token found, validating...');
       const captchaValid = await validateCaptcha(validatedData.captchaToken);
+      console.log('[SIGNUP] CAPTCHA validation result:', captchaValid);
+      
       if (!captchaValid) {
+        console.error('[SIGNUP] CAPTCHA validation failed, rejecting signup');
         return {
           statusCode: 400,
           headers,
@@ -185,6 +217,9 @@ const handler: Handler = async (event: HandlerEvent) => {
           }),
         };
       }
+      console.log('[SIGNUP] CAPTCHA validation passed, proceeding with signup');
+    } else {
+      console.log('[SIGNUP] No CAPTCHA token provided');
     }
 
     // Check if email already exists
